@@ -1,0 +1,9 @@
+[package]
+name = "miyaburu"
+version = "0.1.0"
+edition = "2024"
+description = "A design-led local Markdown preview CLI (in development)"
+license = "MIT"
+repository = "https://github.com/salan70/miyaburu"
+
+[dependencies]
