@@ -1,0 +1,15 @@
+{
+  "name": "miyaburu-development",
+  "private": true,
+  "description": "Development-only documentation checks for the Rust miyaburu CLI",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "docs:check": "docbridge check",
+    "docs:audit": "docbridge check --audit"
+  },
+  "devDependencies": {
+    "docbridge": "0.13.1"
+  }
+}
