@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/docbridge/schemas/docbridge.schema.json",
+  "include": {
+    "code": {
+      "rust": {
+        "patterns": ["src/**/*.rs"]
+      }
+    },
+    "docs": ["docs/specs/**/*.md"]
+  }
+}
