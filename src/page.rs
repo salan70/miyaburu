@@ -30,7 +30,7 @@ pub fn build_page(input: &PageInput<'_>) -> String {
     let rendered = input.rendered;
     let nonce = escape_html(input.nonce);
     let title = escape_html(rendered.title.as_deref().unwrap_or(input.document_name));
-    let theme = input.config.mermaid.theme.as_str();
+    let theme = input.config.mermaid_theme().as_str();
     let variables = input.config.css_variables();
     let mermaid_script = if rendered.has_mermaid {
         format!("<script nonce=\"{nonce}\" src=\"{MERMAID_FILE_NAME}\"></script>\n")
@@ -123,7 +123,7 @@ mod tests {
     fn body_carries_mermaid_theme() {
         let config = Config::default();
         let html = page(&rendered(None, false), &config);
-        let attr = format!("data-mermaid-theme=\"{}\"", config.mermaid.theme.as_str());
+        let attr = format!("data-mermaid-theme=\"{}\"", config.mermaid_theme().as_str());
         assert!(html.contains(&attr));
     }
 

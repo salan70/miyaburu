@@ -96,6 +96,8 @@
     var accent = cssValue('--mb-color-accent');
     var accentSoft = cssValue('--mb-color-accent-soft');
     return {
+      // 暗い背景では、指定しない色を Mermaid に暗い側で作らせる。
+      darkMode: cssValue('color-scheme') === 'dark',
       fontFamily: cssValue('--mb-font-body'),
       background: bg,
       primaryColor: accentSoft,

@@ -125,6 +125,41 @@ fn applies_the_config_file_in_the_current_directory() {
 }
 
 #[test]
+fn applies_a_built_in_color_theme_and_keeps_written_colors() {
+    let workspace = Workspace::new("theme");
+    workspace.write("note.md", "```mermaid\ngraph LR\n  A --> B\n```\n");
+    workspace.write(
+        "miyaburu.toml",
+        "[color]\ntheme = \"dracula\"\naccent = \"#e0407a\"\n",
+    );
+
+    let output = miyaburu(&workspace, &["--no-open", "-o", "out", "note.md"]);
+
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let html = fs::read_to_string(workspace.0.join("out/index.html")).expect("read page");
+    assert!(html.contains("--mb-color-bg:#282a36;"));
+    assert!(html.contains("--mb-color-accent:#e0407a;"));
+    assert!(html.contains("color-scheme:dark;"));
+    // 図は、ページの色に合わせるテーマで描く。
+    assert!(html.contains("data-mermaid-theme=\"base\""));
+}
+
+#[test]
+fn reports_an_unknown_color_theme() {
+    let workspace = Workspace::new("badtheme");
+    workspace.write("note.md", "本文\n");
+    workspace.write("miyaburu.toml", "[color]\ntheme = \"drakula\"\n");
+
+    let output = miyaburu(&workspace, &["--no-open", "-o", "out", "note.md"]);
+
+    assert_eq!(output.status.code(), Some(1));
+    let message = stderr(&output);
+    assert!(message.contains("miyaburu.toml"), "stderr: {message}");
+    assert!(message.contains("drakula"), "stderr: {message}");
+    assert!(!workspace.0.join("out/index.html").exists());
+}
+
+#[test]
 fn reports_an_invalid_config_with_its_key() {
     let workspace = Workspace::new("badconfig");
     workspace.write("note.md", "本文\n");

@@ -27,6 +27,7 @@ size = 16
 line_height = 1.625
 
 [color]
+theme = "default"
 background = "#ffffff"
 surface = "#f6f6f7"
 text = "#1f1f1f"
@@ -35,6 +36,11 @@ border = "#e5e5e8"
 accent = "#4078e0"
 accent_soft = "#e8effc"
 link = "#2f63c8"
+code = "#c4314b"
+note = "#2f63c8"
+tip = "#1a7f4b"
+warning = "#9a6200"
+caution = "#c8372d"
 
 [layout]
 max_width = 960
@@ -58,6 +64,7 @@ theme = "neutral"
 | `font.code` | コードのフォント名 | 100文字までの名前 |
 | `font.size` | 本文の文字サイズ（px） | 10〜32 |
 | `font.line_height` | 本文の行の高さ（文字サイズに対する倍率） | 1.0〜3.0 |
+| `color.theme` | 元にする[組み込みの配色](#組み込みの配色) | 配色の名前 |
 | `color.background` | ページの背景 | 色 |
 | `color.surface` | コードブロックや表の見出し行の面 | 色 |
 | `color.text` | 本文の文字 | 色 |
@@ -66,6 +73,11 @@ theme = "neutral"
 | `color.accent` | 見出しや箇条書きの記号などの差し色 | 色 |
 | `color.accent_soft` | 差し色を薄くした面 | 色 |
 | `color.link` | リンク | 色 |
+| `color.code` | 文中のコードの文字 | 色 |
+| `color.note` | アラート `[!NOTE]` の記号と罫 | 色 |
+| `color.tip` | アラート `[!TIP]` の記号と罫 | 色 |
+| `color.warning` | アラート `[!WARNING]` の記号と罫 | 色 |
+| `color.caution` | アラート `[!CAUTION]` の記号と罫 | 色 |
 | `layout.max_width` | 本文の最大幅（px） | 320〜2400 |
 | `rendering.show_markers` | 見出しの `##`、箇条書きの `-`、インラインコードのバッククォートを表示する | `true`、`false` |
 | `rendering.break_after_kuten` | 句点 `。` の後に表示上の改行を入れる | `true`、`false` |
@@ -75,8 +87,60 @@ theme = "neutral"
 | `mermaid.theme` | Mermaidのテーマ | `default`、`neutral`、`forest`、`base`、`dark` |
 
 - 色は `#rgb`、`#rrggbb`、`#rrggbbaa` のいずれかで書きます。
+- アラート `[!IMPORTANT]` は、色を足さずに `color.text` で示します。
+- `mermaid.theme` を書かない場合は、`color.theme` が `default` なら `neutral`、それ以外なら `base` になります。
+  `base` は、図の色をページの色に合わせます。
 - 指定したフォントが端末にない場合は、既定のフォント、OSの日本語フォントの順に代替します。
 - フォント名には、引用符、`\`、`;`、`{`、`}`、`<`、`>` を使えません。
+
+<!-- @code src/theme.rs#ColorTheme -->
+
+## 組み込みの配色
+
+`color.theme` に名前を書くと、`[color]` の色がすべてその配色に変わります。
+同じ `[color]` に書いた色は、配色の色より優先します。
+
+```toml
+[color]
+theme = "tokyo-night"
+accent = "#e0407a"
+```
+
+| 名前 | 元にした配色 | 背景 |
+| --- | --- | --- |
+| `default` | みやぶるの既定の配色 | 明るい |
+| `dracula` | Dracula | 暗い |
+| `alucard` | Alucard（Dracula のライト版） | 明るい |
+| `monokai` | Monokai | 暗い |
+| `kanagawa` | Kanagawa（Wave） | 暗い |
+| `kanagawa-lotus` | Kanagawa（Lotus） | 明るい |
+| `tokyo-night` | Tokyo Night | 暗い |
+| `tokyo-night-storm` | Tokyo Night（Storm） | 暗い |
+| `catppuccin-mocha` | Catppuccin（Mocha） | 暗い |
+| `catppuccin-latte` | Catppuccin（Latte） | 明るい |
+| `nord` | Nord | 暗い |
+| `gruvbox-dark` | Gruvbox（Dark） | 暗い |
+| `gruvbox-light` | Gruvbox（Light） | 明るい |
+| `one-dark` | One Dark | 暗い |
+| `solarized-dark` | Solarized（Dark） | 暗い |
+| `solarized-light` | Solarized（Light） | 明るい |
+| `rose-pine` | Rosé Pine | 暗い |
+| `rose-pine-dawn` | Rosé Pine（Dawn） | 明るい |
+| `everforest` | Everforest（Dark） | 暗い |
+| `github-dark` | GitHub（Dark） | 暗い |
+| `github-light` | GitHub（Light） | 明るい |
+| `xcode-dark` | Xcode の Default（Dark） | 暗い |
+| `xcode-light` | Xcode の Default（Light） | 明るい |
+| `xcode-dusk` | Xcode の Dusk | 暗い |
+| `xcode-midnight` | Xcode の Midnight | 暗い |
+| `xcode-civic` | Xcode の Civic | 暗い |
+
+- 色は、元にした配色が公開している値から、役割に合うものを選んでいます。
+  補足の文字に使える明るさの色がない配色では、文字の色をコメントの色へ寄せた色（Dracula、Monokai、Nord）か、背景へ寄せた色（Xcode の Dusk、Midnight、Civic）を使います。
+  `color.accent_soft` は、差し色を背景に混ぜた色です。
+- 背景が暗いときは、スクロールバーなどブラウザーが描く部品も暗い側で表示します。
+  背景が暗いかどうかは、`color.background` の明るさで決めます。
+- OSの外観（ライト、ダーク）に合わせた自動の切り替えは行いません。
 
 ## 検証
 

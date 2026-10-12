@@ -5,6 +5,7 @@
 pub mod config;
 pub mod page;
 pub mod render;
+pub mod theme;
 
 use std::fs;
 use std::io;

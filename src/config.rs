@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::theme::{ColorTheme, is_dark_background};
+
 /// 設定ファイル全体。書かれていない項目は既定値になる。
 ///
 /// @doc docs/specs/configuration.md#設定項目
@@ -44,10 +46,13 @@ impl Default for FontConfig {
     }
 }
 
-/// `[color]`。値は `#rgb`、`#rrggbb`、`#rrggbbaa` のいずれか。
+/// `[color]`。`theme` の配色を元にし、書かれた色だけを置き換えたもの。
+/// 色の値は `#rgb`、`#rrggbb`、`#rrggbbaa` のいずれか。
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[serde(from = "ColorTable")]
 pub struct ColorConfig {
+    /// 元にした組み込みの配色。
+    pub theme: ColorTheme,
     pub background: String,
     /// コードブロックや表の見出し行の面。
     pub surface: String,
@@ -60,19 +65,87 @@ pub struct ColorConfig {
     /// 差し色を薄くした面。
     pub accent_soft: String,
     pub link: String,
+    /// 文中のコードの文字。
+    pub code: String,
+    /// アラートの種類を示す色。記号と罫に使う。
+    pub note: String,
+    pub tip: String,
+    pub warning: String,
+    pub caution: String,
+}
+
+impl ColorConfig {
+    /// 組み込みの配色をそのまま使う。
+    pub fn from_theme(theme: ColorTheme) -> Self {
+        let palette = theme.palette();
+        Self {
+            theme,
+            background: palette.background.to_string(),
+            surface: palette.surface.to_string(),
+            text: palette.text.to_string(),
+            muted: palette.muted.to_string(),
+            border: palette.border.to_string(),
+            accent: palette.accent.to_string(),
+            accent_soft: palette.accent_soft.to_string(),
+            link: palette.link.to_string(),
+            code: palette.code.to_string(),
+            note: palette.note.to_string(),
+            tip: palette.tip.to_string(),
+            warning: palette.warning.to_string(),
+            caution: palette.caution.to_string(),
+        }
+    }
+
+    /// 背景が暗いか。暗いときは、ブラウザーが描く部品と図の色も暗い側に合わせる。
+    pub fn is_dark(&self) -> bool {
+        is_dark_background(&self.background)
+    }
 }
 
 impl Default for ColorConfig {
     fn default() -> Self {
+        Self::from_theme(ColorTheme::Default)
+    }
+}
+
+/// `[color]` に書かれた内容。書かれていない色は `theme` の配色から取る。
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct ColorTable {
+    theme: ColorTheme,
+    background: Option<String>,
+    surface: Option<String>,
+    text: Option<String>,
+    muted: Option<String>,
+    border: Option<String>,
+    accent: Option<String>,
+    accent_soft: Option<String>,
+    link: Option<String>,
+    code: Option<String>,
+    note: Option<String>,
+    tip: Option<String>,
+    warning: Option<String>,
+    caution: Option<String>,
+}
+
+impl From<ColorTable> for ColorConfig {
+    fn from(table: ColorTable) -> Self {
+        let base = Self::from_theme(table.theme);
         Self {
-            background: "#ffffff".to_string(),
-            surface: "#f6f6f7".to_string(),
-            text: "#1f1f1f".to_string(),
-            muted: "#4d4d4d".to_string(),
-            border: "#e5e5e8".to_string(),
-            accent: "#4078e0".to_string(),
-            accent_soft: "#e8effc".to_string(),
-            link: "#2f63c8".to_string(),
+            theme: base.theme,
+            background: table.background.unwrap_or(base.background),
+            surface: table.surface.unwrap_or(base.surface),
+            text: table.text.unwrap_or(base.text),
+            muted: table.muted.unwrap_or(base.muted),
+            border: table.border.unwrap_or(base.border),
+            accent: table.accent.unwrap_or(base.accent),
+            accent_soft: table.accent_soft.unwrap_or(base.accent_soft),
+            link: table.link.unwrap_or(base.link),
+            code: table.code.unwrap_or(base.code),
+            note: table.note.unwrap_or(base.note),
+            tip: table.tip.unwrap_or(base.tip),
+            warning: table.warning.unwrap_or(base.warning),
+            caution: table.caution.unwrap_or(base.caution),
         }
     }
 }
@@ -121,14 +194,15 @@ impl Default for RenderingConfig {
 #[serde(default, deny_unknown_fields)]
 pub struct MermaidConfig {
     pub enabled: bool,
-    pub theme: MermaidTheme,
+    /// 書かれていなければ、配色に合わせて選ぶ（`Config::mermaid_theme`）。
+    pub theme: Option<MermaidTheme>,
 }
 
 impl Default for MermaidConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            theme: MermaidTheme::Neutral,
+            theme: None,
         }
     }
 }
@@ -257,6 +331,11 @@ impl Config {
             ("color.accent", &self.color.accent),
             ("color.accent_soft", &self.color.accent_soft),
             ("color.link", &self.color.link),
+            ("color.code", &self.color.code),
+            ("color.note", &self.color.note),
+            ("color.tip", &self.color.tip),
+            ("color.warning", &self.color.warning),
+            ("color.caution", &self.color.caution),
         ];
         for (key, value) in colors {
             if !is_hex_color(value) {
@@ -281,11 +360,23 @@ impl Config {
         Ok(())
     }
 
+    /// Mermaidに渡すテーマ。`mermaid.theme` が書かれていなければ、既定の配色では `neutral`、
+    /// ほかの配色では図をページの色に合わせる `base` にする。
+    pub fn mermaid_theme(&self) -> MermaidTheme {
+        self.mermaid.theme.unwrap_or(match self.color.theme {
+            ColorTheme::Default => MermaidTheme::Neutral,
+            _ => MermaidTheme::Base,
+        })
+    }
+
     /// ページのCSSが参照する変数を `:root{...}` として返す。
     pub fn css_variables(&self) -> String {
         let font = &self.font;
         let color = &self.color;
+        let color_scheme = if color.is_dark() { "dark" } else { "light" };
         let declarations = [
+            // スクロールバーなど、ブラウザーが描く部品の明暗を背景に合わせる。
+            ("color-scheme", color_scheme.to_string()),
             (
                 "--mb-font-body",
                 font_stack(&font.body, BODY_FALLBACKS, "system-ui, sans-serif"),
@@ -305,6 +396,11 @@ impl Config {
             ("--mb-color-accent", css_safe(&color.accent)),
             ("--mb-color-accent-soft", css_safe(&color.accent_soft)),
             ("--mb-color-link", css_safe(&color.link)),
+            ("--mb-color-code", css_safe(&color.code)),
+            ("--mb-color-note", css_safe(&color.note)),
+            ("--mb-color-tip", css_safe(&color.tip)),
+            ("--mb-color-warning", css_safe(&color.warning)),
+            ("--mb-color-caution", css_safe(&color.caution)),
         ];
         let body: String = declarations
             .iter()
@@ -457,7 +553,61 @@ mod tests {
     #[test]
     fn known_theme_is_parsed() {
         let config = Config::from_toml_str("[mermaid]\ntheme = \"forest\"\n").unwrap();
-        assert_eq!(config.mermaid.theme, MermaidTheme::Forest);
+        assert_eq!(config.mermaid.theme, Some(MermaidTheme::Forest));
+    }
+
+    #[test]
+    fn color_theme_replaces_every_color() {
+        let config = Config::from_toml_str("[color]\ntheme = \"dracula\"\n").unwrap();
+        assert_eq!(config.color, ColorConfig::from_theme(ColorTheme::Dracula));
+        assert_eq!(config.color.background, "#282a36");
+        assert_ne!(config.color.caution, Config::default().color.caution);
+    }
+
+    #[test]
+    fn written_colors_override_the_theme() {
+        let config =
+            Config::from_toml_str("[color]\naccent = \"#e0407a\"\ntheme = \"tokyo-night\"\n")
+                .unwrap();
+        let mut expected = ColorConfig::from_theme(ColorTheme::TokyoNight);
+        expected.accent = "#e0407a".to_string();
+        assert_eq!(config.color, expected);
+    }
+
+    #[test]
+    fn unknown_color_theme_is_parse_error_listing_the_names() {
+        let error = Config::from_toml_str("[color]\ntheme = \"drakula\"\n").unwrap_err();
+        let ConfigErrorKind::Parse(message) = error.kind else {
+            panic!("Parse のはずが {error:?}");
+        };
+        assert!(message.contains("`tokyo-night`"), "{message}");
+    }
+
+    #[test]
+    fn mermaid_theme_follows_the_color_theme_unless_written() {
+        assert_eq!(Config::default().mermaid_theme(), MermaidTheme::Neutral);
+        let themed = Config::from_toml_str("[color]\ntheme = \"nord\"\n").unwrap();
+        assert_eq!(themed.mermaid_theme(), MermaidTheme::Base);
+        let written =
+            Config::from_toml_str("[color]\ntheme = \"nord\"\n[mermaid]\ntheme = \"dark\"\n")
+                .unwrap();
+        assert_eq!(written.mermaid_theme(), MermaidTheme::Dark);
+    }
+
+    #[test]
+    fn color_scheme_follows_the_background() {
+        let css = Config::default().css_variables();
+        assert!(css.contains("color-scheme:light;"), "{css}");
+        let css = Config::from_toml_str("[color]\ntheme = \"dracula\"\n")
+            .unwrap()
+            .css_variables();
+        assert!(css.contains("color-scheme:dark;"), "{css}");
+        assert!(css.contains("--mb-color-caution:#ff5555;"), "{css}");
+        // 背景だけを書き換えた場合も、その背景で判断する。
+        let css = Config::from_toml_str("[color]\nbackground = \"#101010\"\n")
+            .unwrap()
+            .css_variables();
+        assert!(css.contains("color-scheme:dark;"), "{css}");
     }
 
     #[test]
@@ -525,6 +675,11 @@ mod tests {
             "accent",
             "accent_soft",
             "link",
+            "code",
+            "note",
+            "tip",
+            "warning",
+            "caution",
         ] {
             let text = format!("[color]\n{key} = \"#12345\"\n");
             assert_eq!(invalid_key(&text), format!("color.{key}"), "{text}");

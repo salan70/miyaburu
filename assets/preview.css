@@ -11,13 +11,6 @@
   --mb-radius-mark: 2px;
   --mb-radius-control: 6px;
   --mb-radius-surface: 10px;
-  /* 文中のコードの文字色。警告の赤とは色相を変える。 */
-  --mb-color-code: #c4314b;
-  /* アラートの種類を示す色。記号と罫にだけ使い、面には敷かない。 */
-  --mb-color-note: #2f63c8;
-  --mb-color-tip: #1a7f4b;
-  --mb-color-warning: #9a6200;
-  --mb-color-caution: #c8372d;
 }
 
 html {

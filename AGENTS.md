@@ -40,6 +40,7 @@ DocBridgeは**開発時だけ**のツールです。Rustの実行ファイルの
 | `src/lib.rs` | Markdownの読み込み。 |
 | `src/render.rs` | MarkdownからHTML断片への変換。 |
 | `src/config.rs` | TOMLの設定と検証。 |
+| `src/theme.rs` | 組み込みの配色。 |
 | `src/page.rs` | HTML文書の組み立て。 |
 | `src/main.rs` | コマンドラインの入口。 |
 | `assets/preview.css`、`assets/preview.js` | ページの見た目と動作。実行ファイルに埋め込みます。 |

@@ -22,12 +22,13 @@ HTMLを生成して既定のブラウザーで開き、すぐに終了します�
 - 長いファイルパス・URLは短く表示し、実際の値とコピー機能は維持する
 - GFM（表、タスクリスト、脚注、アラートなど）とMermaidに対応し、オフラインで表示できる
 - CSSを直接編集せず、設定ファイルから見た目を変更できる
+- Dracula、Monokai、Kanagawa、Tokyo Night、Xcodeなど、よく使われる配色を名前で選べる
 - Codex、Claude Codeなどから、簡単なコマンドで起動できる
 
 フォントは同梱していません。
 LINE Seed JPとHackGenがインストールされていない端末では、OSの日本語フォントで表示します。
 
-**まだ対応していないもの**は、コードのシンタックスハイライト、ダークモード、文書の変更を検知した再読み込みです。
+**まだ対応していないもの**は、コードのシンタックスハイライト、OSの外観に合わせた配色の自動切り替え、文書の変更を検知した再読み込みです。
 Cloudflare Tunnelなどを利用したスマホからの閲覧は、将来の構想でありMVPには含めません。
 
 ## 導入
@@ -90,6 +91,7 @@ Codex、Claude Codeなどのエージェントに開かせるには、`AGENTS.md
 size = 17
 
 [color]
+theme = "tokyo-night"
 accent = "#e0407a"
 
 [rendering]
@@ -97,6 +99,13 @@ break_after_kuten = false
 ```
 
 書いた項目だけが既定値から変わります。
+`color.theme` には、次の配色を指定できます。同じ `[color]` に書いた色は、配色の色より優先します。
+
+| 背景 | 名前 |
+| --- | --- |
+| 暗い | `dracula`、`monokai`、`kanagawa`、`tokyo-night`、`tokyo-night-storm`、`catppuccin-mocha`、`nord`、`gruvbox-dark`、`one-dark`、`solarized-dark`、`rose-pine`、`everforest`、`github-dark`、`xcode-dark`、`xcode-dusk`、`xcode-midnight`、`xcode-civic` |
+| 明るい | `default`、`github-light`、`xcode-light`、`alucard`（Draculaのライト版）、`solarized-light`、`catppuccin-latte`、`gruvbox-light`、`rose-pine-dawn`、`kanagawa-lotus` |
+
 項目の一覧と既定値は[設定の仕様](docs/specs/configuration.md)にあります。
 
 ## 開発環境
