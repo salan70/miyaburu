@@ -177,10 +177,13 @@ impl Renderer<'_, '_> {
                 i + 1
             }
             Event::SoftBreak => {
-                if self.pending.is_some() {
-                    self.resolve_pending();
-                } else {
+                if self.in_heading {
+                    // 見出しは、原文が複数行でも 1 行で表示する。
                     self.out.push('\n');
+                } else {
+                    // 原文の改行は、表示でも改行にする。句点の後の改行とは重ねない。
+                    self.pending = None;
+                    self.out.push_str("<br>");
                 }
                 i + 1
             }
@@ -1022,9 +1025,24 @@ mod tests {
 
     #[test]
     fn kuten_before_soft_break_merges() {
-        let out = html("一。\n二");
-        assert!(out.contains("<p>一。<br class=\"kuten-break\">二</p>"));
-        assert!(!out.contains('\n') || !out.contains("<br class=\"kuten-break\">\n"));
+        assert!(html("一。\n二").contains("<p>一。<br>二</p>"));
+        assert!(html("**一。**\n二").contains("<p><strong>一。</strong><br>二</p>"));
+    }
+
+    #[test]
+    fn source_line_break_is_shown() {
+        assert!(html("一\n二").contains("<p>一<br>二</p>"));
+        assert!(html("- 一\n  二").contains("<div class=\"li-body\">一<br>二</div>"));
+        assert!(html("> 一\n> 二").contains("<p>一<br>二</p>"));
+        // 句点の後の改行を止めても、原文の改行は表示する。
+        let out = html_with("一。二\n三", |o| o.break_after_kuten = false);
+        assert!(out.contains("<p>一。二<br>三</p>"));
+    }
+
+    #[test]
+    fn source_line_break_is_not_shown_in_heading_or_after_alert_marker() {
+        assert!(!html("題\n名\n===").contains("<br"));
+        assert!(!html("> [!NOTE]\n> 補足").contains("<br"));
     }
 
     #[test]
@@ -1082,11 +1100,6 @@ mod tests {
             out.contains("一。<br class=\"kuten-break\"><a href"),
             "{out}"
         );
-    }
-
-    #[test]
-    fn plain_soft_break_is_newline() {
-        assert!(html("一\n二").contains("<p>一\n二</p>"));
     }
 
     #[test]
