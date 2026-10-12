@@ -287,7 +287,14 @@ impl Renderer<'_, '_> {
             }
             Tag::Item => {
                 self.pending = None;
-                let task = matches!(events.get(i + 1), Some((Event::TaskListMarker(_), _)));
+                // 項目の間を空けて書いたリストでは、チェックの印が段落の中に入る。
+                let task = match events.get(i + 1) {
+                    Some((Event::TaskListMarker(_), _)) => true,
+                    Some((Event::Start(Tag::Paragraph), _)) => {
+                        matches!(events.get(i + 2), Some((Event::TaskListMarker(_), _)))
+                    }
+                    _ => false,
+                };
                 self.out
                     .push_str(if task { "<li class=\"task\">" } else { "<li>" });
                 let text = self.item_marker(range.start);
@@ -1083,6 +1090,13 @@ mod tests {
         let out = html("- [ ] a\n- [x] b");
         assert!(out.contains("<li class=\"task\"><span class=\"md-marker\" aria-hidden=\"true\">- </span><div class=\"li-body\"><input type=\"checkbox\" disabled>a"));
         assert!(out.contains("<input type=\"checkbox\" disabled checked>b"));
+    }
+
+    #[test]
+    fn task_items_separated_by_blank_lines() {
+        let out = html("- [ ] a\n\n- [x] b");
+        assert_eq!(out.matches("<li class=\"task\">").count(), 2);
+        assert!(out.contains("<div class=\"li-body\"><p><input type=\"checkbox\" disabled>a"));
     }
 
     #[test]
