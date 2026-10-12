@@ -24,30 +24,46 @@ miyaburu docs/plan.md
 初期の対象は**PC上のローカルプレビュー**です。
 Cloudflare Tunnelなどを利用したスマホからの閲覧は、将来の構想でありMVPには含めません。
 
-## 開発者向け
+## 開発環境
 
-みやぶる本体はRustで実装します。
-[DocBridge](https://github.com/salan70/docbridge)の実行には**開発時のみ**Node.js 22以上が必要ですが、完成したRust CLIの利用者には要求しません。
+実装言語はRustです。開発用のツールチェーンは`flake.nix`、実行コマンドは`justfile`で管理します。
+[DocBridge](https://github.com/salan70/docbridge)のNode.jsは開発・CI専用であり、みやぶる本体の実行時依存ではありません。
+
+必要なものは **Nix（flakes有効）・direnv・nix-direnv** です。direnvのシェルフックを事前に設定してください。
+既にdotfiles側で設定している場合、再設定は不要です。
+
+初回は次の操作を行います。
 
 ```sh
-cargo fmt --check
-cargo test
-
-npm install
-npm run docs:check
-npm run docs:audit
+cd miyaburu
+direnv allow
+just setup
 ```
 
-これらのチェックは、初期構築PRのGitHub Actionsで成功を確認しています。
-ただし、完成したプレビューCLIの検証ではありません。
-依存関係をローカルで解決した後にnpmのロックファイルをコミットし、CIを`npm ci`に切り替える予定です。
+`.envrc`は`use flake`を実行します。**初回の許可後はcdだけで開発環境が自動的に有効**になります。
+`.envrc`の内容を変更した場合は再度`direnv allow`が必要です。
+`nix-direnv`を使うことで再入室時のシェル評価がキャッシュされます。
+
+主なコマンドは次のとおりです。
+
+| コマンド | 用途 |
+| --- | --- |
+| `just --list` | 利用できるコマンドの一覧 |
+| `just setup` | 開発用DocBridgeの依存関係を導入 |
+| `just check` | Rustの書式・テスト・DocBridgeの整合性を検証 |
+| `just fmt` | Rustのコードを整形 |
+| `just lint` | Clippyによる静的検査 |
+| `just build` | Rustライブラリをビルド |
+| `just docs-audit` | DocBridgeで未連携の候補を確認 |
+| `just versions` | ツールのバージョンを確認 |
+
+direnvを使わない場面では、`nix develop --command just check`でも実行できます。
+環境の依存を固定するため、**`flake.lock`はNixが生成したものをGitにコミットする予定**です。現段階では未生成です。
 
 DocBridgeの設定は[docbridge.config.json](docbridge.config.json)にあります。
-[入力仕様](docs/specs/input.md)と[`src/lib.rs`](src/lib.rs)には、実際のコード・仕様の双方向リンクを設定しています。
-
-プレビューの実装に着手する前に、[表示仕様](docs/specs/rendering.md)と[AGENTS.md](AGENTS.md)を確認してください。
-機能を実装したら、その機能に対応するRustの宣言と仕様の節をDocBridgeで紐付けます。
-存在しないコードへのリンクは作りません。
+[入力仕様](docs/specs/input.md)と[`src/lib.rs`](src/lib.rs)には双方向リンクを設定しています。
+機能の実装前には[表示仕様](docs/specs/rendering.md)と[AGENTS.md](AGENTS.md)を確認してください。
+この初期段階ではブラウザープレビューCLIはまだ動作しません。
 
 ## 参考資料
 
