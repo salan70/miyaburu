@@ -2,7 +2,8 @@
   "include": {
     "code": {
       "rust": {
-        "patterns": ["src/**/*.rs"]
+        "patterns": ["src/**/*.rs"],
+        "visibility": ["pub", "private"]
       }
     },
     "docs": ["docs/specs/**/*.md"]

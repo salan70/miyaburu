@@ -28,6 +28,23 @@ LINE Seed JPとHackGenがインストールされていない端末では、OS�
 **まだ対応していないもの**は、コードのシンタックスハイライト、ダークモード、文書の変更を検知した再読み込みです。
 Cloudflare Tunnelなどを利用したスマホからの閲覧は、将来の構想でありMVPには含めません。
 
+## 導入
+
+Nix（flakes有効）があれば、次のコマンドで `miyaburu` を使えるようになります。
+
+```sh
+nix profile add github:salan70/miyaburu
+```
+
+導入せずに試す場合は、`nix run` を使います。
+
+```sh
+nix run github:salan70/miyaburu -- docs/plan.md
+```
+
+Nixのパッケージは、macOS（Apple Silicon）とLinux（x86_64、aarch64）に用意しています。
+Rustのツールチェーンがある場合は、このリポジトリを取得して `cargo install --path .` でも導入できます。
+
 ## 使い方
 
 ```sh
@@ -49,6 +66,17 @@ cargo run -- examples/sample.md
 ```
 
 詳しくは[コマンドラインの仕様](docs/specs/cli.md)を参照してください。
+
+## エージェントから使う
+
+Codex、Claude Codeなどのエージェントに開かせるには、`AGENTS.md` や `CLAUDE.md` に次のように書いておきます。
+
+```markdown
+- 計画書や設計書などのMarkdownを書いたら、`miyaburu <ファイル>` で開く。
+```
+
+`miyaburu` はブラウザーの終了を待たずに終了するので、エージェントの作業を止めません。
+ブラウザーを開けない環境では `--no-open` を付けると、生成したHTMLのパスだけを標準出力に表示します。
 
 ## 設定
 
@@ -107,7 +135,7 @@ direnvを使わない場面では、`nix develop --command just check`でも実�
 DocBridgeの版は`.docbridge-version`で決め、`tools/docbridge.sh`が`pnpm dlx`でその版を取得して実行します。事前の導入は不要です。
 
 DocBridgeの設定は[docbridge.config.json](docbridge.config.json)にあります。
-[docs/specs/](docs/specs/)の仕様と`src/`の公開している宣言には、双方向リンクを設定しています。
+[docs/specs/](docs/specs/)の仕様と、`src/`で契約を担う宣言には、双方向リンクを設定しています。
 挙動を変える前に、該当する仕様と[AGENTS.md](AGENTS.md)を確認してください。
 
 ## 同梱しているもの

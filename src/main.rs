@@ -43,6 +43,9 @@ struct PreviewArgs {
     open: bool,
 }
 
+/// 引数を解釈して実行し、結果を終了コードで返す。
+///
+/// @doc docs/specs/cli.md#終了コード
 fn main() -> ExitCode {
     let invocation = match parse_args(env::args_os().skip(1)) {
         Ok(invocation) => invocation,
@@ -85,6 +88,9 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// コマンドラインの引数を解釈する。
+///
+/// @doc docs/specs/cli.md#使い方
 fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, String> {
     let mut input = None;
     let mut config = None;
@@ -190,6 +196,8 @@ fn write_error(path: &Path, error: &io::Error) -> String {
 ///
 /// 一時ファイルに書いてから置き換えるので、出力先がシンボリックリンクでもリンク先は書き換えない。
 /// 入力のMarkdown自身が出力先のときは、原文を守るために中止する。
+///
+/// @doc docs/specs/cli.md#出力先
 fn write_private(path: &Path, contents: &[u8], document: &Path) -> Result<(), String> {
     if fs::canonicalize(path).is_ok_and(|existing| existing == document) {
         return Err(format!(
@@ -259,6 +267,8 @@ fn user_cache_dir() -> Option<PathBuf> {
 }
 
 /// 文書ごとに決まる出力先。同じ文書を開き直すと同じ場所を上書きする。
+///
+/// @doc docs/specs/cli.md#出力先
 fn default_output_dir(document: &Path) -> PathBuf {
     let mut hasher = DefaultHasher::new();
     document.hash(&mut hasher);
@@ -298,13 +308,11 @@ fn nonce() -> String {
 const OPENER_WAIT: Duration = Duration::from_secs(2);
 
 /// 既定のブラウザーで開く。
+///
+/// @doc docs/specs/cli.md#ブラウザーの起動
 fn open_in_browser(page: &Path) -> io::Result<()> {
     let mut command = if cfg!(target_os = "macos") {
         Command::new("open")
-    } else if cfg!(windows) {
-        let mut command = Command::new("cmd");
-        command.args(["/C", "start", ""]);
-        command
     } else {
         Command::new("xdg-open")
     };
@@ -316,6 +324,8 @@ fn open_in_browser(page: &Path) -> io::Result<()> {
 ///
 /// 起動役はふつうすぐに終わるので、その終了を `wait` まで待つ。
 /// 時間内に終わらないときは、ブラウザーを前面で動かしているとみなし、呼び出し元を待たせずに戻る。
+///
+/// @doc docs/specs/cli.md#ブラウザーの起動
 fn launch(mut command: Command, wait: Duration) -> io::Result<()> {
     let mut child = command
         .stdin(Stdio::null())
