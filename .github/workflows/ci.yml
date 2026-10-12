@@ -18,3 +18,7 @@ jobs:
         run: nix develop --command just versions
       - name: RustとDocBridgeを検証
         run: nix develop --command just check
+      - name: Clippyで静的に検査
+        run: nix develop --command just lint
+      - name: 配布用のパッケージをビルド
+        run: nix build --no-link
