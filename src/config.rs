@@ -39,7 +39,7 @@ impl Default for FontConfig {
             body: "LINE Seed JP".to_string(),
             code: "HackGen".to_string(),
             size: 16.0,
-            line_height: 1.75,
+            line_height: 1.625,
         }
     }
 }
@@ -87,7 +87,7 @@ pub struct LayoutConfig {
 
 impl Default for LayoutConfig {
     fn default() -> Self {
-        Self { max_width: 720 }
+        Self { max_width: 960 }
     }
 }
 

@@ -24,7 +24,7 @@
 body = "LINE Seed JP"
 code = "HackGen"
 size = 16
-line_height = 1.75
+line_height = 1.625
 
 [color]
 background = "#ffffff"
@@ -37,7 +37,7 @@ accent_soft = "#e8effc"
 link = "#2f63c8"
 
 [layout]
-max_width = 720
+max_width = 960
 
 [rendering]
 show_markers = true
