@@ -135,7 +135,7 @@ direnvを使わない場面では、`nix develop --command just check`でも実�
 DocBridgeの版は`.docbridge-version`で決め、`tools/docbridge.sh`が`pnpm dlx`でその版を取得して実行します。事前の導入は不要です。
 
 DocBridgeの設定は[docbridge.config.json](docbridge.config.json)にあります。
-[docs/specs/](docs/specs/)の仕様と`src/`の公開している宣言には、双方向リンクを設定しています。
+[docs/specs/](docs/specs/)の仕様と、`src/`で契約を担う宣言には、双方向リンクを設定しています。
 挙動を変える前に、該当する仕様と[AGENTS.md](AGENTS.md)を確認してください。
 
 ## 同梱しているもの

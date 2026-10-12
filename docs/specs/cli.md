@@ -1,5 +1,7 @@
 # コマンドライン
 
+<!-- @code src/main.rs#parse_args -->
+
 ## 使い方
 
 ```sh
@@ -21,6 +23,9 @@ Markdownファイルを1つ受け取り、HTMLを生成して既定のブラウ�
 値を取るオプションは、`--config 設定.toml` と `--config=設定.toml` のどちらでも書けます。
 `--` より後ろは、`-` で始まっていてもファイル名として扱います。
 
+<!-- @code src/main.rs#default_output_dir -->
+<!-- @code src/main.rs#write_private -->
+
 ## 出力先
 
 `--output` を指定しない場合は、利用者ごとのキャッシュ用ディレクトリに出力します。
@@ -41,11 +46,17 @@ Markdownファイルを1つ受け取り、HTMLを生成して既定のブラウ�
   出力先がシンボリックリンクでも、リンク先のファイルは書き換えません。
 - 出力先が入力のMarkdownファイル自身になる場合は、書き出さずにエラーで終了します。
 
+<!-- @code src/main.rs#open_in_browser -->
+<!-- @code src/main.rs#launch -->
+
 ## ブラウザーの起動
 
 - macOSでは `open`、そのほかのUnix系では `xdg-open` で開きます。
 - 起動用のコマンドの終了を最長2秒待ち、失敗していれば終了コード1で終了します。
 - 2秒以内に終わらない場合は、ブラウザーが前面で動いているとみなし、待たずに終了します。
+- Windowsは対象にしていません。
+
+<!-- @code src/main.rs#main -->
 
 ## 終了コード
 
