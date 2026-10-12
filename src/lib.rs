@@ -1,14 +1,18 @@
-//! Core utilities for miyaburu.
+//! みやぶるの中核となる処理。
 //!
-//! Browser rendering and CLI behavior are not implemented yet.
+//! Markdownの読み込み、HTMLへの変換、設定、ページの組み立てを提供する。
+
+pub mod config;
+pub mod page;
+pub mod render;
 
 use std::fs;
 use std::io;
 use std::path::Path;
 
-/// Read a UTF-8 Markdown source file without changing its contents.
+/// UTF-8のMarkdownファイルを、内容を変えずに読み込む。
 ///
-/// @doc docs/specs/input.md#markdown-source-loading
+/// @doc docs/specs/input.md#markdown原文の読み込み
 pub fn read_markdown(path: &Path) -> io::Result<String> {
     fs::read_to_string(path)
 }

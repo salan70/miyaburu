@@ -6,3 +6,6 @@ description = "Markdownを見やすくブラウザーで表示するRust製CLI�
 repository = "https://github.com/salan70/miyaburu"
 
 [dependencies]
+pulldown-cmark = { version = "0.13", default-features = false }
+serde = { version = "1", features = ["derive"] }
+toml = "1"

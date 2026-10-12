@@ -1,17 +1,17 @@
-# Input
+# 入力
 
 <!-- @code src/lib.rs#read_markdown -->
 
-## Markdown source loading
+## Markdown原文の読み込み
 
-The CLI will accept an existing Markdown file path. Loading is kept separate
-from rendering: the original UTF-8 text must remain unchanged, including
-Markdown markers, Japanese punctuation, newlines, and links.
+CLIは、存在するMarkdownファイルのパスを1つ受け取ります。
+読み込みと表示用の変換は分けてあります。
+読み込んだUTF-8の文字列は変更しません。Markdownの記号、句読点、改行、リンクもそのままです。
 
-The initial Rust implementation is `read_markdown` in `src/lib.rs`.
-A missing file, unreadable file, or invalid UTF-8 produces a normal I/O error.
-The CLI must eventually report this failure clearly instead of silently
-substituting an empty document.
+実装は `src/lib.rs` の `read_markdown` です。
+ファイルがない場合、読めない場合、UTF-8として不正な場合は、入出力エラーを返します。
+CLIはこのエラーをファイル名とともに標準エラーへ表示し、終了コード1で終了します。
+空の文書に置き換えて表示を続けることはしません。
 
-Rendering transformations operate on a parsed representation, not by writing
-modified content back to the source file.
+表示用の変換は、読み込んだ文字列を解析した結果に対して行います。
+変換した内容を元のファイルへ書き戻すことはありません。

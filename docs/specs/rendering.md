@@ -1,42 +1,59 @@
-# Rendering contract (planned)
+# 表示
 
-This is an implementation target, not a description of a working renderer.
+Markdownを、ブラウザーで読みやすいHTMLへ変換するときの契約です。
 
-## Presentation
+<!-- @code src/render.rs#render_markdown -->
 
-- Default appearance: white, digital, Editorial × Soft Pop; restrained color.
-- Body, headings and UI: LINE Seed JP. Code and inline code: HackGen.
-- Preserve heading markers such as `##` and list markers such as `-` visually.
-- Do not display syntax-only formatting delimiters such as `**` and backticks.
-  Literal punctuation in the source must remain visible.
-- Insert visual line breaks after Japanese `。` in prose, including list items.
-  Do not modify code blocks, inline code, URLs, or the original file.
-  Do not generate duplicate breaks at the end of a paragraph.
-- For ordinary prose, abbreviate long file paths to a filename and long bare
-  URLs to an identifiable short label. Preserve the full target for navigation
-  and an explicit copy action; never truncate code or command examples.
-- Support common Markdown/GFM constructs and Mermaid. Mermaid assets should
-  work offline and use safe defaults.
+## 変換の規則
 
-## User experience
+- 見出しの `##` や箇条書きの `-` などの記号は、表示に残します。
+- 強調の `**` やインラインコードのバッククォートなど、装飾のためだけの記号は表示しません。
+  原文にある通常の記号と句読点は、そのまま表示します。
+- 段落、箇条書き、引用の中の文章では、句点 `。` の後に表示上の改行を入れます。
+  - 見出し、表のセル、インラインコード、コードブロック、URLには入れません。
+  - 段落の末尾と、原文ですでに改行している箇所には、改行を重ねません。
+  - `。` の直後が閉じ括弧（`」` など）のときは入れません。
+- 文章中の長いファイルパスは「…/ファイル名」に、長いURLは「ホスト名/…/最後の要素」に短くして表示します。
+  - 完全な値は、リンク先、ツールチップ、コピーボタンに残します。
+  - コードブロックとインラインコードの中は、長くても短くしません。
+- 文章中のURLはリンクにします。
+- GFMの表、取り消し線、タスクリスト、脚注、アラートに対応します。
+- 言語が `mermaid` のコードブロックは、図として表示します。
+- 相対パスのリンクと画像は、Markdownファイルの場所を基準に解決します。
+- 元のMarkdownファイルは書き換えません。
 
-The intended command is `miyaburu path/to/document.md`, opening the document
-in the default browser without blocking the calling agent unnecessarily.
+<!-- @code src/page.rs#build_page -->
 
-Defaults should work without configuration. Customization should be possible
-with a local TOML configuration file and without requiring hand-written CSS.
+## ページの構成
 
-## Security and scope
+- 見た目は、白を基調としたデジタルな Editorial × Soft Pop です。色は控えめに使います。
+- 本文、見出し、UIには LINE Seed JP、コードには HackGen を使います。
+  フォントは同梱しません。
+  端末にインストールされたものを使い、ない場合はOSの日本語フォントで表示します。
+- CSSとスクリプトはHTMLに埋め込みます。ネットワークなしで表示できます。
+- Mermaidは同梱したものを使い、図を含む文書のときだけHTMLの隣に書き出します。
+- 見た目は[設定ファイル](configuration.md)で変更できます。CSSを書く必要はありません。
 
-- Never treat arbitrary Markdown as trusted executable HTML.
-- Start with loopback-only access and no implicit external exposure.
-- The Cloudflare Tunnel / phone-access idea is outside the initial MVP.
-- A working preview CLI, asset bundling, and precise configuration schema
-  have **not** been implemented or finalized.
+## 安全性
 
-## References
+- Markdownに書かれた生のHTMLは、要素として解釈せず、文字として表示します。
+- リンクにするのは `http`、`https`、`mailto`、ページ内リンク、ローカルのファイルだけです。
+  `javascript:` などのリンクと、スキームを省いた `//ホスト名/…` の形のリンクは作りません。
+- 画像も同じ種類に限ります。
+  文書が外部の画像（`https://…`）を参照している場合は、ブラウザーがその画像を取得します。
+- ページにはContent-Security-Policyを設定し、同梱したスクリプト以外を実行させません。
+- Mermaidは `securityLevel: 'strict'` で動かします。
+- サーバーは起動しません。
+  生成したHTMLをローカルのファイルとして開くので、ネットワークへ公開されません。
+- 生成したHTMLは、利用者本人だけが読めるキャッシュ用ディレクトリに置きます。
 
-- [UI/UX NUMA](https://github.com/salan70/uiux-numa): typography, spacing,
-  role-based colors and accessibility principles.
-- [DocBridge](https://github.com/salan70/docbridge): link this contract to
-  implementations as they are added. Only add reciprocal links when code exists.
+## 対象外
+
+- コードのシンタックスハイライト、ダークモード、文書の変更を検知した再読み込みは、実装していません。
+- フォントの同梱は行っていません。
+- Cloudflare Tunnelなどを使ったスマートフォンからの閲覧は、初期の対象に含めません。
+
+## 参考
+
+- [UI/UX NUMA](https://github.com/salan70/uiux-numa)：書体、余白、色の役割、アクセシビリティの原則。
+- [DocBridge](https://github.com/salan70/docbridge)：この契約と実装を相互に参照させるために使います。
