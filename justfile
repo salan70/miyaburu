@@ -5,9 +5,9 @@
 default:
     @just --list
 
-# DocBridgeの依存関係を初回導入する。Rust製CLIの実行時依存ではない。
+# DocBridgeの依存関係をpackage-lock.jsonどおりに導入する。Rust製CLIの実行時依存ではない。
 setup:
-    npm install --ignore-scripts --no-audit --no-fund
+    npm ci --ignore-scripts --no-audit --no-fund
 
 # Rustの書式を整える。
 fmt:
@@ -25,7 +25,7 @@ test:
 lint:
     cargo clippy --all-targets -- -D warnings
 
-# Rustをビルドする。ブラウザープレビューCLIはまだ未実装。
+# Rustをビルドする。
 build:
     cargo build
 
