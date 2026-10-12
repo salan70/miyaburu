@@ -146,8 +146,20 @@ impl Renderer<'_, '_> {
             }
             Event::Code(c) => {
                 self.resolve_pending();
+                // 区切りが分かるように、原文と同じ数のバッククォートを前後に残す。
+                let ticks = if self.opts.show_markers {
+                    code_delimiter(self.src, &events[i].1)
+                } else {
+                    String::new()
+                };
                 self.out.push_str("<code>");
+                if !ticks.is_empty() {
+                    self.marker(&ticks);
+                }
                 self.out.push_str(&escape(c));
+                if !ticks.is_empty() {
+                    self.marker(&ticks);
+                }
                 self.out.push_str("</code>");
                 i + 1
             }
@@ -611,6 +623,14 @@ impl Renderer<'_, '_> {
     }
 }
 
+/// インラインコードを囲んでいるバッククォートを、原文から取り出す。
+fn code_delimiter(src: &str, range: &Range<usize>) -> String {
+    let count = src
+        .get(range.clone())
+        .map_or(0, |span| span.chars().take_while(|c| *c == '`').count());
+    "`".repeat(count.max(1))
+}
+
 fn copy_button(full_escaped: &str, label: &str) -> String {
     format!(
         "<button type=\"button\" class=\"copy-button\" data-copy=\"{full_escaped}\" aria-label=\"{label}\"></button>"
@@ -946,10 +966,22 @@ mod tests {
 
     #[test]
     fn markers_hidden_when_disabled() {
-        let out = html_with("## 見出し\n\n- a\n\n1. b", |o| o.show_markers = false);
+        let out = html_with("## 見出し\n\n- a\n\n1. b\n\n`c`", |o| {
+            o.show_markers = false
+        });
         assert!(!out.contains("md-marker"));
         assert!(!out.contains("md-list"));
         assert!(out.contains("<div class=\"li-body\">"));
+        assert!(out.contains("<code>c</code>"));
+    }
+
+    #[test]
+    fn inline_code_keeps_its_backticks_as_markers() {
+        let tick = "<span class=\"md-marker\" aria-hidden=\"true\">`</span>";
+        assert!(html("前 `a < b` 後").contains(&format!("<code>{tick}a &lt; b{tick}</code>")));
+        // バッククォートを含むコードは、原文と同じ 2 個の区切りを残す。
+        let ticks = "<span class=\"md-marker\" aria-hidden=\"true\">``</span>";
+        assert!(html("`` a`b ``").contains(&format!("<code>{ticks}a`b{ticks}</code>")));
     }
 
     #[test]
@@ -1067,7 +1099,7 @@ mod tests {
     fn no_break_in_heading_or_cell_or_code() {
         let out = html("# 一。二\n\n| a |\n|---|\n| 一。二 |\n\n`a。b`\n\n```\n一。二\n```");
         assert!(!out.contains("kuten-break"));
-        assert!(out.contains("<code>a。b</code>"));
+        assert!(out.contains("</span>a。b<span"));
     }
 
     #[test]

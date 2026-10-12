@@ -67,7 +67,7 @@ theme = "neutral"
 | `color.accent_soft` | 差し色を薄くした面 | 色 |
 | `color.link` | リンク | 色 |
 | `layout.max_width` | 本文の最大幅（px） | 320〜2400 |
-| `rendering.show_markers` | 見出しの `##` や箇条書きの `-` を表示する | `true`、`false` |
+| `rendering.show_markers` | 見出しの `##`、箇条書きの `-`、インラインコードのバッククォートを表示する | `true`、`false` |
 | `rendering.break_after_kuten` | 句点 `。` の後に表示上の改行を入れる | `true`、`false` |
 | `rendering.abbreviate` | 長いパスとURLを短く表示する | `true`、`false` |
 | `rendering.abbreviate_min_chars` | 短くする対象にする文字数の下限 | 16〜400 |
