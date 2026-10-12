@@ -1,40 +1,36 @@
-# miyaburu / みやぶる
+# みやぶる / miyaburu
 
-A **Rust-first**, local Markdown preview CLI for documents produced by coding agents.
-The goal is to open a Markdown file in a thoughtfully designed browser view
-using one command:
+**みやぶる**は、AIコーディングエージェントが生成したMarkdown文書を、ブラウザーで読みやすく表示するためのRust製CLIです。
+目指す操作は、Markdownファイルを指定するだけです。
 
 ```sh
 miyaburu docs/plan.md
 ```
 
-> **Status: early scaffold.** The browser preview command above is the intended
-> interface, **not an implemented command**. The repository currently contains
-> an initial Rust source-loading function and development documentation.
+> **現在は初期構築段階です。** 上記コマンドは目標とする使い方であり、**まだ実装されていません**。
+> 現時点で実装されているのは、RustによるMarkdown原文の読み込みと基本テストです。
 
-## Intended experience
+## 目指す表示体験
 
-- White, digital **Editorial × Soft Pop** presentation without paper texture.
-- LINE Seed JP for UI and prose; HackGen for code.
-- Visible Markdown heading markers (`##`) and list markers (`-`), but no
-  formatting-only delimiters like `**` or inline-code backticks.
-- Visual line breaks after Japanese `。` in normal prose and list items.
-- Short labels for long file paths and URLs, without losing the original
-  destination or copyable value.
-- GFM, code highlighting and Mermaid, ultimately offline-first.
-- Customizable from a local config file without writing CSS.
-- Simple integration with Codex, Claude Code and other agent workflows.
+- 紙の質感を使わない、白基調の**Editorial × Soft Pop**デザイン
+- 本文・見出し・UIにはLINE Seed JP、コードにはHackGenを使用
+- 見出しの `##` や箇条書きの `-` は表示し、強調の `**` など装飾用の記法は隠す
+- 本文やリスト中の句点 `。` の後で、表示上の改行を入れる
+- 長いファイルパス・URLは省略し、実際の値やコピー機能は維持する
+- GFM、コードハイライト、Mermaidへの対応と、オフラインでの表示
+- CSSを直接編集せず、設定ファイルから見た目を変更できる
+- Codex、Claude Codeなどから、簡単なコマンドで起動できる
 
-The initial work is scoped to desktop local preview. Phone access (potentially
-through Cloudflare Tunnel with authentication) is an idea for a later version.
+初期の対象は**PC上のローカルプレビュー**です。
+Cloudflare Tunnelなどを利用したスマホからの閲覧は、将来の構想でありMVPには含めません。
 
-## For contributors
+## 開発者向け
 
-Rust is the product language. Node.js >=22 is needed **only** to run
-[DocBridge](https://github.com/salan70/docbridge) while developing; it is not
-intended to be a runtime requirement for users.
+みやぶる本体はRustで実装します。
+[DocBridge](https://github.com/salan70/docbridge)の実行には**開発時のみ**Node.js 22以上が必要ですが、完成したRust CLIの利用者には要求しません。
 
 ```sh
+cargo fmt --check
 cargo test
 
 npm install
@@ -42,23 +38,18 @@ npm run docs:check
 npm run docs:audit
 ```
 
-This development scaffold has **not yet been executed or verified** in the
-authoring environment. Commit an npm lockfile after resolving dependencies
-locally so CI can use `npm ci`.
+これらのチェックは、初期構築PRのGitHub Actionsで成功を確認しています。
+ただし、完成したプレビューCLIの検証ではありません。
+依存関係をローカルで解決した後にnpmのロックファイルをコミットし、CIを`npm ci`に切り替える予定です。
 
-The configuration is in [docbridge.config.json](docbridge.config.json).
-A real pair of reciprocal annotations connects
-[`src/lib.rs`](src/lib.rs) with
-[the input contract](docs/specs/input.md).
+DocBridgeの設定は[docbridge.config.json](docbridge.config.json)にあります。
+[入力仕様](docs/specs/input.md)と[`src/lib.rs`](src/lib.rs)には、実際のコード・仕様の双方向リンクを設定しています。
 
-Read [the rendering contract](docs/specs/rendering.md) and
-[AGENTS.md](AGENTS.md) before implementing browser preview. As features are
-implemented, link concrete Rust declarations to the appropriate specification
-sections with DocBridge. Avoid creating links to non-existent code.
+プレビューの実装に着手する前に、[表示仕様](docs/specs/rendering.md)と[AGENTS.md](AGENTS.md)を確認してください。
+機能を実装したら、その機能に対応するRustの宣言と仕様の節をDocBridgeで紐付けます。
+存在しないコードへのリンクは作りません。
 
-## Design references
+## 参考資料
 
-- [UI/UX NUMA](https://github.com/salan70/uiux-numa) — typography,
-  spacing, color roles and design evaluations.
-- [DocBridge](https://github.com/salan70/docbridge) — development-time
-  documentation/code consistency.
+- [UI/UX NUMA](https://github.com/salan70/uiux-numa) — タイポグラフィ、余白、色の役割、デザイン検証
+- [DocBridge](https://github.com/salan70/docbridge) — 開発時の文書・コード間の整合性管理
