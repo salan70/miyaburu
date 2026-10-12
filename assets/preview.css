@@ -60,6 +60,8 @@ h6 {
   position: relative;
   /* 原文と同じく、前後に 1 行ずつ空ける。 */
   margin: var(--mb-line) 0;
+  /* 文字も、先頭の記号と同じ差し色にする。 */
+  color: var(--mb-color-accent);
   /* どの段も、本文と同じ大きさ、同じ行の高さの太字にする。段の深さは、記号の数と下の罫の長さで示す。 */
   font-size: 1rem;
   font-weight: 700;
@@ -621,6 +623,8 @@ blockquote.alert-caution::before {
   overflow: hidden;
   height: var(--mb-line);
   background: var(--mb-color-bg);
+  /* 本文の中の見出しと同じ色にする。 */
+  color: var(--mb-color-accent);
   font-weight: 700;
   line-height: var(--mb-line);
   text-overflow: ellipsis;

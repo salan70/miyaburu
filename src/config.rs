@@ -60,7 +60,7 @@ pub struct ColorConfig {
     /// 補足的な文字。
     pub muted: String,
     pub border: String,
-    /// 見出しや箇条書きの記号などに使う差し色。
+    /// 見出しと、箇条書きの記号などに使う差し色。
     pub accent: String,
     /// 差し色を薄くした面。
     pub accent_soft: String,

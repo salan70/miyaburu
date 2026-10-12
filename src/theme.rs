@@ -144,9 +144,9 @@ impl ColorTheme {
             Self::GruvboxLight    => ["#fbf1c7", "#f2e5bc", "#3c3836", "#665c54", "#d5c4a1", "#af3a03", "#f2dbaf", "#076678", "#8f3f71", "#076678", "#79740e", "#b57614", "#9d0006"],
             Self::OneDark         => ["#282c34", "#21252b", "#abb2bf", "#9da5b4", "#3e4451", "#61afef", "#364d63", "#56b6c2", "#c678dd", "#61afef", "#98c379", "#e5c07b", "#e06c75"],
             Self::SolarizedDark   => ["#002b36", "#073642", "#93a1a1", "#839496", "#004052", "#2aa198", "#0a484e", "#268bd2", "#d33682", "#268bd2", "#859900", "#b58900", "#dc322f"],
-            Self::SolarizedLight  => ["#fdf6e3", "#eee8d5", "#586e75", "#657b83", "#ddd6c1", "#2aa198", "#e4ecda", "#268bd2", "#d33682", "#268bd2", "#859900", "#b58900", "#dc322f"],
+            Self::SolarizedLight  => ["#fdf6e3", "#eee8d5", "#586e75", "#657b83", "#ddd6c1", "#cb4b16", "#f7e1ca", "#268bd2", "#d33682", "#268bd2", "#859900", "#b58900", "#dc322f"],
             Self::RosePine        => ["#191724", "#1f1d2e", "#e0def4", "#908caa", "#403d52", "#ebbcba", "#4e404a", "#c4a7e7", "#9ccfd8", "#9ccfd8", "#95b1ac", "#f6c177", "#eb6f92"],
-            Self::RosePineDawn    => ["#faf4ed", "#fffaf3", "#464261", "#575279", "#dfdad9", "#d7827e", "#f6e6e0", "#286983", "#907aa9", "#56949f", "#286983", "#ea9d34", "#b4637a"],
+            Self::RosePineDawn    => ["#faf4ed", "#fffaf3", "#464261", "#575279", "#dfdad9", "#907aa9", "#ede5e5", "#286983", "#56949f", "#286983", "#6d8f89", "#ea9d34", "#b4637a"],
             Self::Everforest      => ["#2d353b", "#232a2e", "#d3c6aa", "#9da9a0", "#3d484d", "#a7c080", "#4c584c", "#7fbbb3", "#d699b6", "#7fbbb3", "#83c092", "#dbbc7f", "#e67e80"],
             Self::GithubDark      => ["#0d1117", "#161b22", "#e6edf3", "#8b949e", "#30363d", "#58a6ff", "#203651", "#58a6ff", "#db61a2", "#58a6ff", "#3fb950", "#d29922", "#f85149"],
             Self::GithubLight     => ["#ffffff", "#f6f8fa", "#1f2328", "#59636e", "#d0d7de", "#0969da", "#e1edfb", "#0969da", "#bf3989", "#0969da", "#1a7f37", "#9a6700", "#cf222e"],
@@ -154,7 +154,7 @@ impl ColorTheme {
             Self::XcodeLight      => ["#ffffff", "#f5f5f5", "#262626", "#5d6c79", "#e1e1e1", "#9b2393", "#f3e5f2", "#0e0eff", "#6c36a9", "#0f68a0", "#326d74", "#815f03", "#c41a16"],
             Self::XcodeDusk       => ["#1e2028", "#2d2d2d", "#ffffff", "#b0b1b4", "#414249", "#83c057", "#374834", "#00a0be", "#c67c48", "#5dd8ff", "#41b645", "#efb759", "#f74a4a"],
             Self::XcodeMidnight   => ["#000000", "#1a1919", "#ffffff", "#a6a6a6", "#272727", "#d31895", "#350625", "#00a0ff", "#e47c48", "#5dd8ff", "#41cc45", "#efb759", "#f74a4a"],
-            Self::XcodeCivic      => ["#1f2029", "#282938", "#e1e2e7", "#9d9ea4", "#414249", "#d7008f", "#4d1842", "#1da9a2", "#c77a4b", "#5dd8ff", "#45bb3e", "#efb759", "#f74a4a"],
+            Self::XcodeCivic      => ["#1f2029", "#282938", "#e1e2e7", "#9d9ea4", "#414249", "#1da9a2", "#1e4247", "#41a1c0", "#c77a4b", "#5dd8ff", "#45bb3e", "#efb759", "#f74a4a"],
         };
         Palette {
             background,
@@ -265,6 +265,7 @@ mod tests {
 
     /// 写し間違いで読めない配色にならないよう、背景とのコントラスト比に下限を置く。
     /// 元の配色がもともと淡い色を使うので、記号と罫だけに使う色の下限は低くしている。
+    /// 差し色は見出しの文字にも使うので、リンクやコードと同じ下限にする。
     #[test]
     fn palette_colors_stay_readable_on_the_background() {
         for theme in ColorTheme::ALL {
@@ -274,7 +275,7 @@ mod tests {
                 ("muted", p.muted, 4.0),
                 ("link", p.link, 3.0),
                 ("code", p.code, 3.0),
-                ("accent", p.accent, 2.0),
+                ("accent", p.accent, 3.0),
                 ("note", p.note, 2.0),
                 ("tip", p.tip, 2.0),
                 ("warning", p.warning, 2.0),
