@@ -3,6 +3,7 @@
 //! Markdownの読み込み、HTMLへの変換、設定、ページの組み立てを提供する。
 
 pub mod config;
+mod highlight;
 pub mod page;
 pub mod render;
 pub mod theme;

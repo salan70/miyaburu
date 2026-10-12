@@ -160,6 +160,7 @@ fn generate(args: &PreviewArgs) -> Result<PathBuf, String> {
         abbreviate: config.rendering.abbreviate,
         abbreviate_min_chars: config.rendering.abbreviate_min_chars,
         mermaid: config.mermaid.enabled,
+        highlight: config.rendering.highlight,
         base_dir: document.parent().map(Path::to_path_buf),
     };
     let rendered = render_markdown(&source, &options);

@@ -322,6 +322,40 @@ pre.code-block > code {
   line-height: inherit;
 }
 
+/* 字句の種類ごとの色。面は敷かず、文字の色だけで分ける。 */
+.tok-comment {
+  color: var(--mb-syntax-comment);
+}
+
+.tok-keyword {
+  color: var(--mb-syntax-keyword);
+}
+
+.tok-string {
+  color: var(--mb-syntax-string);
+}
+
+.tok-constant {
+  color: var(--mb-syntax-constant);
+}
+
+.tok-function {
+  color: var(--mb-syntax-function);
+}
+
+.tok-type {
+  color: var(--mb-syntax-type);
+}
+
+/* 差分で足した行と消した行は、アラートの TIP と CAUTION の色で示す。 */
+.tok-inserted {
+  color: var(--mb-color-tip);
+}
+
+.tok-deleted {
+  color: var(--mb-color-caution);
+}
+
 pre.raw-html {
   color: var(--mb-color-muted);
 }

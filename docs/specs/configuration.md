@@ -42,6 +42,14 @@ tip = "#1a7f4b"
 warning = "#9a6200"
 caution = "#c8372d"
 
+[color.syntax]
+comment = "#6e6e76"
+keyword = "#c4314b"
+string = "#1a7f4b"
+constant = "#9a6200"
+function = "#2f63c8"
+type = "#0f7b8a"
+
 [layout]
 max_width = 960
 
@@ -50,6 +58,7 @@ show_markers = true
 break_after_kuten = true
 abbreviate = true
 abbreviate_min_chars = 48
+highlight = true
 
 [mermaid]
 enabled = true
@@ -78,16 +87,24 @@ theme = "neutral"
 | `color.tip` | アラート `[!TIP]` の記号と罫 | 色 |
 | `color.warning` | アラート `[!WARNING]` の記号と罫 | 色 |
 | `color.caution` | アラート `[!CAUTION]` の記号と罫 | 色 |
+| `color.syntax.comment` | コードブロックのコメント | 色 |
+| `color.syntax.keyword` | コードブロックのキーワードと、タグやキーの名前 | 色 |
+| `color.syntax.string` | コードブロックの文字列 | 色 |
+| `color.syntax.constant` | コードブロックの数値、真偽値などの定数 | 色 |
+| `color.syntax.function` | コードブロックの関数と、属性の名前 | 色 |
+| `color.syntax.type` | コードブロックの型 | 色 |
 | `layout.max_width` | 本文の最大幅（px） | 320〜2400 |
 | `rendering.show_markers` | 見出しの `##`、箇条書きの `-`、インラインコードのバッククォートを表示する | `true`、`false` |
 | `rendering.break_after_kuten` | 句点 `。` の後に表示上の改行を入れる | `true`、`false` |
 | `rendering.abbreviate` | 長いパスとURLを短く表示する | `true`、`false` |
 | `rendering.abbreviate_min_chars` | 短くする対象にする文字数の下限 | 16〜400 |
+| `rendering.highlight` | コードブロックを[字句の種類ごとに色分け](rendering.md#シンタックスハイライト)する | `true`、`false` |
 | `mermaid.enabled` | `mermaid` のコードブロックを図にする | `true`、`false` |
 | `mermaid.theme` | Mermaidのテーマ | `default`、`neutral`、`forest`、`base`、`dark` |
 
 - 色は `#rgb`、`#rrggbb`、`#rrggbbaa` のいずれかで書きます。
 - アラート `[!IMPORTANT]` は、色を足さずに `color.text` で示します。
+- コードブロックの差分（`diff`）は、足した行を `color.tip`、消した行を `color.caution` で示します。
 - `mermaid.theme` を書かない場合は、`color.theme` が `default` なら `neutral`、それ以外なら `base` になります。
   `base` は、図の色をページの色に合わせます。
 - 指定したフォントが端末にない場合は、既定のフォント、OSの日本語フォントの順に代替します。
@@ -97,13 +114,16 @@ theme = "neutral"
 
 ## 組み込みの配色
 
-`color.theme` に名前を書くと、`[color]` の色がすべてその配色に変わります。
-同じ `[color]` に書いた色は、配色の色より優先します。
+`color.theme` に名前を書くと、`[color]` と `[color.syntax]` の色がすべてその配色に変わります。
+同じ `[color]` と `[color.syntax]` に書いた色は、配色の色より優先します。
 
 ```toml
 [color]
 theme = "tokyo-night"
 accent = "#e0407a"
+
+[color.syntax]
+comment = "#7f88b0"
 ```
 
 | 名前 | 元にした配色 | 背景 |
@@ -138,6 +158,9 @@ accent = "#e0407a"
 - 色は、元にした配色が公開している値から、役割に合うものを選んでいます。
   補足の文字に使える明るさの色がない配色では、文字の色をコメントの色へ寄せた色（Dracula、Monokai、Nord）か、背景へ寄せた色（Xcode の Dusk、Midnight、Civic）を使います。
   `color.accent_soft` は、差し色を背景に混ぜた色です。
+- `[color.syntax]` の色も、元にした配色がその種類の字句に使っている色です。
+  - コードブロックの面（`color.surface`）の上でコントラスト比が 3.0 に届かない色は、届くまで文字の色へ寄せています。
+  - 元の配色で2つの種類が同じ色になるところは、片方を近い役割の色に替えています（Gruvbox と Everforest の関数、Solarized と Rosé Pine の定数）。
 - 背景が暗いときは、スクロールバーなどブラウザーが描く部品も暗い側で表示します。
   背景が暗いかどうかは、`color.background` の明るさで決めます。
 - OSの外観（ライト、ダーク）に合わせた自動の切り替えは行いません。

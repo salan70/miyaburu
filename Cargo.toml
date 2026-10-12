@@ -8,4 +8,8 @@ repository = "https://github.com/salan70/miyaburu"
 [dependencies]
 pulldown-cmark = { version = "0.13", default-features = false }
 serde = { version = "1", features = ["derive"] }
+# 正規表現はRustだけで動く fancy-regex にして、Cのライブラリ（Oniguruma）を持ち込まない。
+syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-fancy"] }
 toml = "1"
+# syntect の既定にない言語（TypeScript、TOML、Swift、Kotlin、Dart など）の構文定義。
+two-face = { version = "0.5", default-features = false, features = ["syntect-fancy"] }

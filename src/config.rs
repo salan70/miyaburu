@@ -72,12 +72,27 @@ pub struct ColorConfig {
     pub tip: String,
     pub warning: String,
     pub caution: String,
+    /// コードブロックの字句の色。
+    pub syntax: SyntaxColors,
+}
+
+/// `[color.syntax]`。コードブロックで、字句の種類ごとに使う色。
+#[derive(Debug, Clone, PartialEq)]
+pub struct SyntaxColors {
+    pub comment: String,
+    pub keyword: String,
+    pub string: String,
+    /// 数値、真偽値などの定数。
+    pub constant: String,
+    pub function: String,
+    pub r#type: String,
 }
 
 impl ColorConfig {
     /// 組み込みの配色をそのまま使う。
     pub fn from_theme(theme: ColorTheme) -> Self {
         let palette = theme.palette();
+        let syntax = theme.syntax();
         Self {
             theme,
             background: palette.background.to_string(),
@@ -93,6 +108,14 @@ impl ColorConfig {
             tip: palette.tip.to_string(),
             warning: palette.warning.to_string(),
             caution: palette.caution.to_string(),
+            syntax: SyntaxColors {
+                comment: syntax.comment.to_string(),
+                keyword: syntax.keyword.to_string(),
+                string: syntax.string.to_string(),
+                constant: syntax.constant.to_string(),
+                function: syntax.function.to_string(),
+                r#type: syntax.r#type.to_string(),
+            },
         }
     }
 
@@ -126,11 +149,25 @@ struct ColorTable {
     tip: Option<String>,
     warning: Option<String>,
     caution: Option<String>,
+    syntax: SyntaxTable,
+}
+
+/// `[color.syntax]` に書かれた内容。
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct SyntaxTable {
+    comment: Option<String>,
+    keyword: Option<String>,
+    string: Option<String>,
+    constant: Option<String>,
+    function: Option<String>,
+    r#type: Option<String>,
 }
 
 impl From<ColorTable> for ColorConfig {
     fn from(table: ColorTable) -> Self {
         let base = Self::from_theme(table.theme);
+        let syntax = table.syntax;
         Self {
             theme: base.theme,
             background: table.background.unwrap_or(base.background),
@@ -146,6 +183,14 @@ impl From<ColorTable> for ColorConfig {
             tip: table.tip.unwrap_or(base.tip),
             warning: table.warning.unwrap_or(base.warning),
             caution: table.caution.unwrap_or(base.caution),
+            syntax: SyntaxColors {
+                comment: syntax.comment.unwrap_or(base.syntax.comment),
+                keyword: syntax.keyword.unwrap_or(base.syntax.keyword),
+                string: syntax.string.unwrap_or(base.syntax.string),
+                constant: syntax.constant.unwrap_or(base.syntax.constant),
+                function: syntax.function.unwrap_or(base.syntax.function),
+                r#type: syntax.r#type.unwrap_or(base.syntax.r#type),
+            },
         }
     }
 }
@@ -176,6 +221,8 @@ pub struct RenderingConfig {
     pub abbreviate: bool,
     /// この文字数以上のパスとURLを省略の対象にする。
     pub abbreviate_min_chars: usize,
+    /// 言語を書いたコードブロックを、字句の種類ごとに色分けする。
+    pub highlight: bool,
 }
 
 impl Default for RenderingConfig {
@@ -185,6 +232,7 @@ impl Default for RenderingConfig {
             break_after_kuten: true,
             abbreviate: true,
             abbreviate_min_chars: 48,
+            highlight: true,
         }
     }
 }
@@ -336,6 +384,12 @@ impl Config {
             ("color.tip", &self.color.tip),
             ("color.warning", &self.color.warning),
             ("color.caution", &self.color.caution),
+            ("color.syntax.comment", &self.color.syntax.comment),
+            ("color.syntax.keyword", &self.color.syntax.keyword),
+            ("color.syntax.string", &self.color.syntax.string),
+            ("color.syntax.constant", &self.color.syntax.constant),
+            ("color.syntax.function", &self.color.syntax.function),
+            ("color.syntax.type", &self.color.syntax.r#type),
         ];
         for (key, value) in colors {
             if !is_hex_color(value) {
@@ -401,6 +455,12 @@ impl Config {
             ("--mb-color-tip", css_safe(&color.tip)),
             ("--mb-color-warning", css_safe(&color.warning)),
             ("--mb-color-caution", css_safe(&color.caution)),
+            ("--mb-syntax-comment", css_safe(&color.syntax.comment)),
+            ("--mb-syntax-keyword", css_safe(&color.syntax.keyword)),
+            ("--mb-syntax-string", css_safe(&color.syntax.string)),
+            ("--mb-syntax-constant", css_safe(&color.syntax.constant)),
+            ("--mb-syntax-function", css_safe(&color.syntax.function)),
+            ("--mb-syntax-type", css_safe(&color.syntax.r#type)),
         ];
         let body: String = declarations
             .iter()
@@ -572,6 +632,47 @@ mod tests {
         let mut expected = ColorConfig::from_theme(ColorTheme::TokyoNight);
         expected.accent = "#e0407a".to_string();
         assert_eq!(config.color, expected);
+    }
+
+    #[test]
+    fn syntax_colors_follow_the_theme_unless_written() {
+        let themed = Config::from_toml_str("[color]\ntheme = \"dracula\"\n").unwrap();
+        assert_eq!(themed.color.syntax.keyword, "#ff79c6");
+        assert_ne!(themed.color.syntax, Config::default().color.syntax);
+
+        let written = Config::from_toml_str(
+            "[color]\ntheme = \"dracula\"\n[color.syntax]\ntype = \"#abc\"\ncomment = \"#123456\"\n",
+        )
+        .unwrap();
+        let mut expected = ColorConfig::from_theme(ColorTheme::Dracula);
+        expected.syntax.r#type = "#abc".to_string();
+        expected.syntax.comment = "#123456".to_string();
+        assert_eq!(written.color, expected);
+
+        let css = written.css_variables();
+        assert!(css.contains("--mb-syntax-type:#abc;"), "{css}");
+        assert!(css.contains("--mb-syntax-keyword:#ff79c6;"), "{css}");
+    }
+
+    #[test]
+    fn syntax_colors_are_validated_like_other_colors() {
+        assert_eq!(
+            invalid_key("[color.syntax]\nstring = \"green\"\n"),
+            "color.syntax.string"
+        );
+        assert_eq!(
+            invalid_key("[color.syntax]\ntype = \"#12\"\n"),
+            "color.syntax.type"
+        );
+        let error = Config::from_toml_str("[color.syntax]\nnumber = \"#123456\"\n").unwrap_err();
+        assert!(matches!(error.kind, ConfigErrorKind::Parse(_)), "{error:?}");
+    }
+
+    #[test]
+    fn highlight_is_on_unless_turned_off() {
+        assert!(Config::default().rendering.highlight);
+        let config = Config::from_toml_str("[rendering]\nhighlight = false\n").unwrap();
+        assert!(!config.rendering.highlight);
     }
 
     #[test]

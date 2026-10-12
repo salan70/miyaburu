@@ -125,6 +125,51 @@ fn applies_the_config_file_in_the_current_directory() {
 }
 
 #[test]
+fn highlights_code_blocks_with_the_colors_of_the_theme() {
+    let workspace = Workspace::new("highlight");
+    workspace.write("note.md", "```rust\nlet a = \"b\";\n```\n");
+    workspace.write(
+        "themed.toml",
+        "[color]\ntheme = \"dracula\"\n\n[color.syntax]\nstring = \"#abcdef\"\n",
+    );
+    workspace.write("plain.toml", "[rendering]\nhighlight = false\n");
+
+    let themed = miyaburu(
+        &workspace,
+        &[
+            "--no-open",
+            "--config",
+            "themed.toml",
+            "-o",
+            "themed",
+            "note.md",
+        ],
+    );
+    assert!(themed.status.success(), "stderr: {}", stderr(&themed));
+    let html = fs::read_to_string(workspace.0.join("themed/index.html")).expect("read page");
+    assert!(html.contains("<span class=\"tok-keyword\">let</span>"));
+    assert!(html.contains("<span class=\"tok-string\">&quot;b&quot;</span>"));
+    assert!(html.contains("--mb-syntax-keyword:#ff79c6;"));
+    assert!(html.contains("--mb-syntax-string:#abcdef;"));
+    assert!(html.contains(".tok-keyword {"));
+
+    let plain = miyaburu(
+        &workspace,
+        &[
+            "--no-open",
+            "--config",
+            "plain.toml",
+            "-o",
+            "plain",
+            "note.md",
+        ],
+    );
+    assert!(plain.status.success(), "stderr: {}", stderr(&plain));
+    let html = fs::read_to_string(workspace.0.join("plain/index.html")).expect("read page");
+    assert!(html.contains("<code class=\"language-rust\">let a = &quot;b&quot;;\n</code>"));
+}
+
+#[test]
 fn applies_a_built_in_color_theme_and_keeps_written_colors() {
     let workspace = Workspace::new("theme");
     workspace.write("note.md", "```mermaid\ngraph LR\n  A --> B\n```\n");

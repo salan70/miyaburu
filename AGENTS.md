@@ -39,6 +39,7 @@ DocBridgeは**開発時だけ**のツールです。Rustの実行ファイルの
 | --- | --- |
 | `src/lib.rs` | Markdownの読み込み。 |
 | `src/render.rs` | MarkdownからHTML断片への変換。 |
+| `src/highlight.rs` | コードブロックのシンタックスハイライト。 |
 | `src/config.rs` | TOMLの設定と検証。 |
 | `src/theme.rs` | 組み込みの配色。 |
 | `src/page.rs` | HTML文書の組み立て。 |

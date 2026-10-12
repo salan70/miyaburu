@@ -8,6 +8,8 @@ use pulldown_cmark::{
     Alignment, BlockQuoteKind, CodeBlockKind, Event, LinkType, Options, Parser, Tag, TagEnd,
 };
 
+use crate::highlight::highlight;
+
 /// 変換時の切り替え。
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderOptions {
@@ -21,6 +23,8 @@ pub struct RenderOptions {
     pub abbreviate_min_chars: usize,
     /// ` ```mermaid ` のコードブロックを図として扱う。
     pub mermaid: bool,
+    /// 言語を書いたコードブロックを、字句の種類ごとに色分けする。
+    pub highlight: bool,
     /// 相対リンクと相対画像の基準にするディレクトリ（絶対パス）。
     pub base_dir: Option<PathBuf>,
 }
@@ -33,6 +37,7 @@ impl Default for RenderOptions {
             abbreviate: true,
             abbreviate_min_chars: 48,
             mermaid: true,
+            highlight: true,
             base_dir: None,
         }
     }
@@ -253,16 +258,20 @@ impl Renderer<'_, '_> {
                     self.has_mermaid = true;
                     self.out
                         .push_str(&format!("<pre class=\"mermaid\">{}</pre>\n", escape(&code)));
-                } else if lang.is_empty() {
-                    self.out.push_str(&format!(
-                        "<pre class=\"code-block\"><code>{}</code></pre>\n",
-                        escape(&code)
-                    ));
                 } else {
+                    let class = if lang.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" class=\"language-{}\"", escape(lang))
+                    };
+                    let body = self
+                        .opts
+                        .highlight
+                        .then(|| highlight(lang, &code))
+                        .flatten()
+                        .unwrap_or_else(|| escape(&code));
                     self.out.push_str(&format!(
-                        "<pre class=\"code-block\"><code class=\"language-{}\">{}</code></pre>\n",
-                        escape(lang),
-                        escape(&code)
+                        "<pre class=\"code-block\"><code{class}>{body}</code></pre>\n"
                     ));
                 }
                 return end + 1;
@@ -1153,11 +1162,42 @@ mod tests {
 
     #[test]
     fn code_block_with_language() {
-        let out = html("```rust\nlet a = 1 < 2;\n```");
+        let plain = |src: &str| html_with(src, |o| o.highlight = false);
+        let out = plain("```rust\nlet a = 1 < 2;\n```");
         assert!(out.contains(
             "<pre class=\"code-block\"><code class=\"language-rust\">let a = 1 &lt; 2;\n</code></pre>"
         ));
         assert!(html("```\nx\n```").contains("<pre class=\"code-block\"><code>x\n</code></pre>"));
+        // 構文定義のない言語は、色分けせずに言語名だけを残す。
+        assert!(html("```no-such-language\na < b\n```").contains(
+            "<pre class=\"code-block\"><code class=\"language-no-such-language\">a &lt; b\n</code></pre>"
+        ));
+    }
+
+    #[test]
+    fn code_block_is_highlighted_by_token_kind() {
+        let out = html("```rust\nlet a = 1 < 2;\n```");
+        assert!(out.contains(
+            "<pre class=\"code-block\"><code class=\"language-rust\">\
+             <span class=\"tok-keyword\">let</span> a = <span class=\"tok-constant\">1 </span>&lt; \
+             <span class=\"tok-constant\">2</span>;\n</code></pre>"
+        ));
+        // 言語名の後ろに続く指定は、色分けに使わない。
+        let out = html("```rust title=\"main.rs\"\nlet a = 1;\n```");
+        assert!(
+            out.contains("<code class=\"language-rust\"><span class=\"tok-keyword\">let</span>")
+        );
+        // 字下げで書いたコードブロックには言語がない。
+        assert!(html("    let a = 1;\n").contains("<code>let a = 1;\n</code>"));
+        // 文中のコードは色分けしない。
+        assert!(!html("`let a = 1;`").contains("tok-"));
+    }
+
+    #[test]
+    fn highlighted_code_cannot_inject_markup() {
+        let out = html("```html\n<script>alert(\"1\")</script>\n```");
+        assert!(!out.contains("<script"));
+        assert!(out.contains("&lt;<span class=\"tok-keyword\">script</span>&gt;"));
     }
 
     #[test]

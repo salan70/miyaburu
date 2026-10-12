@@ -21,6 +21,7 @@ HTMLを生成して既定のブラウザーで開き、すぐに終了します�
 - 原文の改行はそのまま改行として表示し、本文やリスト中の句点 `。` の後でも、表示上の改行を入れる
 - 長いファイルパス・URLは短く表示し、実際の値とコピー機能は維持する
 - GFM（表、タスクリスト、脚注、アラートなど）とMermaidに対応し、オフラインで表示できる
+- コードブロックを、選んだ配色に合わせてシンタックスハイライトする
 - CSSを直接編集せず、設定ファイルから見た目を変更できる
 - Dracula、Monokai、Kanagawa、Tokyo Night、Xcodeなど、よく使われる配色を名前で選べる
 - Codex、Claude Codeなどから、簡単なコマンドで起動できる
@@ -28,7 +29,7 @@ HTMLを生成して既定のブラウザーで開き、すぐに終了します�
 フォントは同梱していません。
 LINE Seed JPとHackGenがインストールされていない端末では、OSの日本語フォントで表示します。
 
-**まだ対応していないもの**は、コードのシンタックスハイライト、OSの外観に合わせた配色の自動切り替え、文書の変更を検知した再読み込みです。
+**まだ対応していないもの**は、OSの外観に合わせた配色の自動切り替え、文書の変更を検知した再読み込みです。
 Cloudflare Tunnelなどを利用したスマホからの閲覧は、将来の構想でありMVPには含めません。
 
 ## 導入
@@ -152,6 +153,7 @@ DocBridgeの設定は[docbridge.config.json](docbridge.config.json)にありま�
 ## 同梱しているもの
 
 - [Mermaid](https://github.com/mermaid-js/mermaid) 12.1.0（MIT）— `assets/vendor/mermaid.min.js`。ライセンスは`assets/vendor/mermaid.LICENSE`にあります。
+- シンタックスハイライトの構文定義 — [two-face](https://crates.io/crates/two-face) クレートが、[bat](https://github.com/sharkdp/bat)の同梱する定義をまとめたもの。ビルドのときに実行ファイルへ埋め込まれます。定義ごとのライセンスは、two-faceの[一覧](https://codeberg.org/CosmicHarper/two-face/src/branch/main/generated/acknowledgements_full.md)にあります。
 
 ## 参考資料
 

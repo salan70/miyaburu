@@ -55,6 +55,18 @@ pub struct Palette {
     pub caution: &'static str,
 }
 
+/// コードブロックで、字句の種類ごとに使う色。値はすべて `#rrggbb`。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SyntaxPalette {
+    pub comment: &'static str,
+    pub keyword: &'static str,
+    pub string: &'static str,
+    /// 数値、真偽値などの定数。
+    pub constant: &'static str,
+    pub function: &'static str,
+    pub r#type: &'static str,
+}
+
 impl ColorTheme {
     /// すべての配色。配色を足したら、ここにも足す。
     pub const ALL: [Self; 26] = [
@@ -172,6 +184,54 @@ impl ColorTheme {
             caution,
         }
     }
+
+    /// この配色で、コードを字句の種類ごとに色分けするときの色。
+    ///
+    /// 色は、それぞれの配色が公開している値を使う。
+    /// コードブロックの面の上でコントラスト比が 3.0 に届かない色は、届くまで文字の色へ寄せている。
+    /// 元の配色で2つの種類が同じ色になるところは、片方を近い役割の色に替えている
+    /// （Gruvbox と Everforest の関数、Solarized と Rosé Pine の定数）。
+    /// Xcode の配色は、Xcode に同梱されている定義から取っている。
+    #[rustfmt::skip]
+    pub fn syntax(self) -> SyntaxPalette {
+        // コメント、キーワード、文字列、定数、関数、型 の順。
+        let [comment, keyword, string, constant, function, r#type] = match self {
+            Self::Default         => ["#6e6e76", "#c4314b", "#1a7f4b", "#9a6200", "#2f63c8", "#0f7b8a"],
+            Self::Dracula         => ["#6272a4", "#ff79c6", "#f1fa8c", "#bd93f9", "#50fa7b", "#8be9fd"],
+            Self::Alucard         => ["#6c664b", "#a3144d", "#846e15", "#644ac9", "#14710a", "#036a96"],
+            Self::Monokai         => ["#88846f", "#f92672", "#e6db74", "#ae81ff", "#a6e22e", "#66d9ef"],
+            Self::Kanagawa        => ["#727169", "#957fb8", "#98bb6c", "#d27e99", "#7e9cd8", "#7aa89f"],
+            Self::KanagawaLotus   => ["#7d7c79", "#624c83", "#6d8450", "#b35b79", "#4d699b", "#597b75"],
+            Self::TokyoNight      => ["#59628c", "#bb9af7", "#9ece6a", "#ff9e64", "#7aa2f7", "#2ac3de"],
+            Self::TokyoNightStorm => ["#626b95", "#bb9af7", "#9ece6a", "#ff9e64", "#7aa2f7", "#2ac3de"],
+            Self::CatppuccinMocha => ["#9399b2", "#cba6f7", "#a6e3a1", "#fab387", "#89b4fa", "#f9e2af"],
+            Self::CatppuccinLatte => ["#7c7f93", "#8839ef", "#419732", "#dc601d", "#1e66f5", "#b17a35"],
+            Self::Nord            => ["#828da3", "#81a1c1", "#a3be8c", "#b48ead", "#88c0d0", "#8fbcbb"],
+            Self::GruvboxDark     => ["#928374", "#fb4934", "#b8bb26", "#d3869b", "#8ec07c", "#fabd2f"],
+            Self::GruvboxLight    => ["#8f8172", "#9d0006", "#79740e", "#8f3f71", "#427b58", "#b57614"],
+            Self::OneDark         => ["#676e7b", "#c678dd", "#98c379", "#d19a66", "#61afef", "#e5c07b"],
+            Self::SolarizedDark   => ["#697d82", "#859900", "#2aa198", "#c45089", "#268bd2", "#b58900"],
+            Self::SolarizedLight  => ["#76888b", "#798e1e", "#37928e", "#d33682", "#268bd2", "#9e821d"],
+            Self::RosePine        => ["#908caa", "#31748f", "#f6c177", "#c4a7e7", "#ebbcba", "#9ccfd8"],
+            Self::RosePineDawn    => ["#797593", "#286983", "#bf8540", "#907aa9", "#ca7c7b", "#56949f"],
+            Self::Everforest      => ["#859289", "#e67e80", "#a7c080", "#d699b6", "#83c092", "#dbbc7f"],
+            Self::GithubDark      => ["#8b949e", "#ff7b72", "#a5d6ff", "#79c0ff", "#d2a8ff", "#ffa657"],
+            Self::GithubLight     => ["#59636e", "#cf222e", "#0a3069", "#0550ae", "#8250df", "#953800"],
+            Self::XcodeDark       => ["#6c7986", "#fc5fa3", "#fc6a5d", "#d0bf69", "#67b7a4", "#5dd8ff"],
+            Self::XcodeLight      => ["#5d6c79", "#9b2393", "#c41a16", "#1c00cf", "#326d74", "#0b4f79"],
+            Self::XcodeDusk       => ["#41b645", "#c1449f", "#dc3440", "#786dc4", "#83c057", "#00a0be"],
+            Self::XcodeMidnight   => ["#41cc45", "#d31895", "#ff2c38", "#786dff", "#23ff83", "#00a0ff"],
+            Self::XcodeCivic      => ["#45bb3e", "#d80e94", "#d43640", "#149c92", "#1da9a2", "#41a1c0"],
+        };
+        SyntaxPalette {
+            comment,
+            keyword,
+            string,
+            constant,
+            function,
+            r#type,
+        }
+    }
 }
 
 /// `#rgb`、`#rrggbb`、`#rrggbbaa` の相対輝度（0〜1）。透明度は見ない。色として読めなければ `None`。
@@ -234,11 +294,24 @@ mod tests {
         }
     }
 
+    fn syntax_colors(theme: ColorTheme) -> [(&'static str, &'static str); 6] {
+        let s = theme.syntax();
+        [
+            ("comment", s.comment),
+            ("keyword", s.keyword),
+            ("string", s.string),
+            ("constant", s.constant),
+            ("function", s.function),
+            ("type", s.r#type),
+        ]
+    }
+
     #[test]
     fn palette_values_are_six_digit_hex() {
         for theme in ColorTheme::ALL {
             let p = theme.palette();
-            for value in [
+            let syntax = syntax_colors(theme).map(|(_, color)| color);
+            for value in syntax.into_iter().chain([
                 p.background,
                 p.surface,
                 p.text,
@@ -252,7 +325,7 @@ mod tests {
                 p.tip,
                 p.warning,
                 p.caution,
-            ] {
+            ]) {
                 let ok = value.len() == 7
                     && value.starts_with('#')
                     && value[1..]
@@ -296,6 +369,36 @@ mod tests {
                 "{} の muted は面の上で {ratio:.2}",
                 theme.as_str()
             );
+        }
+    }
+
+    /// コードは面の上に置くので、構文の色は面とのコントラスト比で確かめる。
+    #[test]
+    fn syntax_colors_stay_readable_on_the_surface() {
+        for theme in ColorTheme::ALL {
+            let surface = theme.palette().surface;
+            for (role, color) in syntax_colors(theme) {
+                let ratio = contrast(color, surface);
+                assert!(
+                    ratio >= 3.0,
+                    "{} の {role}（{color}）は面の上で {ratio:.2}",
+                    theme.as_str()
+                );
+            }
+        }
+    }
+
+    /// 字句の種類を色で見分けられるようにする。
+    #[test]
+    fn syntax_colors_differ_from_each_other_and_from_the_text() {
+        for theme in ColorTheme::ALL {
+            let colors = syntax_colors(theme);
+            for (index, (role, color)) in colors.iter().enumerate() {
+                assert_ne!(*color, theme.palette().text, "{} の {role}", theme.as_str());
+                for (other_role, other) in &colors[index + 1..] {
+                    assert_ne!(color, other, "{} の {role} と {other_role}", theme.as_str());
+                }
+            }
         }
     }
 
