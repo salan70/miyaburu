@@ -1,0 +1,11 @@
+[package]
+name = "miyaburu"
+version = "0.1.0"
+edition = "2024"
+description = "Markdownを見やすくブラウザーで表示するRust製CLI（開発中）"
+repository = "https://github.com/salan70/miyaburu"
+
+[dependencies]
+pulldown-cmark = { version = "0.13", default-features = false }
+serde = { version = "1", features = ["derive"] }
+toml = "1"
