@@ -25,8 +25,10 @@ DocBridgeは**開発時だけ**のツールです。Rustの実行ファイルの
 - リンクのあるコードや文書を変えたら、`just docs-check` を実行します。
 - `just docs-audit` はときどき実行し、リンクの候補を探します。意味のない一対一のリンクを増やすためには使いません。
 - 注釈の付いた宣言を変えるときは、リンク先の仕様も見直します。
-- DocBridgeが必要とするNode.js（22以上）は、**開発者とCIだけ**のものです。
+- DocBridgeが必要とするNode.js（22以上）とpnpmは、**開発者とCIだけ**のものです。
   利用者は、コンパイルしたRustの実行ファイルだけで使えるようにします。
+- DocBridgeは `tools/docbridge.sh` が、`.docbridge-version` の版を `pnpm dlx` で呼び出します。
+  npmと `package.json` は使いません。版を上げるときは `.docbridge-version` を書き換えます。
 
 ## 構成
 
@@ -40,13 +42,13 @@ DocBridgeは**開発時だけ**のツールです。Rustの実行ファイルの
 | `assets/preview.css`、`assets/preview.js` | ページの見た目と動作。実行ファイルに埋め込みます。 |
 | `assets/vendor/` | 同梱しているMermaid。手で編集しません。 |
 | `tests/cli.rs` | 実行ファイルを通した結合テスト。 |
+| `tools/docbridge.sh`、`.docbridge-version` | DocBridgeの呼び出しと、使う版の定義。 |
 
 ## 検証
 
 開発用のツールは `flake.nix` が用意し、`direnv`（`use flake`）で有効になります。
 リポジトリに入ったら、最初に一度だけ `direnv allow` を実行します。以降はディレクトリに入るだけで使えます。
 
-- `just setup`：開発時だけ使うDocBridgeの依存関係を、`package-lock.json` のとおりに入れます。最初に一度実行します。
 - `just check`：Rustの書式、テスト、DocBridgeの整合性を確かめます。
 - `just lint`：Clippyで静的に検査します。
 - `just --list`：ほかのレシピを確認できます。

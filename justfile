@@ -5,10 +5,6 @@
 default:
     @just --list
 
-# DocBridgeの依存関係をpackage-lock.jsonどおりに導入する。Rust製CLIの実行時依存ではない。
-setup:
-    npm ci --ignore-scripts --no-audit --no-fund
-
 # Rustの書式を整える。
 fmt:
     cargo fmt
@@ -29,15 +25,19 @@ lint:
 build:
     cargo build
 
+# 任意のDocBridgeサブコマンドを実行する（例: just docbridge graph）。Rust製CLIの実行時依存ではない。
+docbridge *ARGS:
+    ./tools/docbridge.sh {{ARGS}}
+
 # DocBridgeでコードと仕様書のリンクを検証する。
 docs-check:
-    npm run docs:check
+    ./tools/docbridge.sh check
 
 # DocBridgeで未連携の候補を調べる。
 docs-audit:
-    npm run docs:audit
+    ./tools/docbridge.sh check --audit
 
-# 全体の基本チェック。事前にjust setupを一度実行すること。
+# 全体の基本チェック。
 check: fmt-check test docs-check
 
 # ツールチェーンのバージョンを確認する。
@@ -45,5 +45,6 @@ versions:
     rustc --version
     cargo --version
     node --version
-    npm --version
+    pnpm --version
     just --version
+    @echo "docbridge $(tr -d '[:space:]' < .docbridge-version)"

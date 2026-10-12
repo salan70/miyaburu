@@ -19,7 +19,10 @@
             cargo
             rustfmt
             clippy
+            # DocBridgeはnpmレジストリで配布されるため、nixpkgsでは固定できない。
+            # 版は .docbridge-version で決め、tools/docbridge.sh が pnpm dlx で呼び出す。
             nodejs_22
+            pnpm
             just
           ];
         };

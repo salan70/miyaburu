@@ -16,7 +16,5 @@ jobs:
             experimental-features = nix-command flakes
       - name: 開発ツールの確認
         run: nix develop --command just versions
-      - name: DocBridgeの依存関係を導入
-        run: nix develop --command just setup
       - name: RustとDocBridgeを検証
         run: nix develop --command just check

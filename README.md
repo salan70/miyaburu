@@ -72,7 +72,8 @@ break_after_kuten = false
 ## 開発環境
 
 実装言語はRustです。開発用のツールチェーンは`flake.nix`、実行コマンドは`justfile`で管理します。
-[DocBridge](https://github.com/salan70/docbridge)のNode.jsは開発・CI専用であり、みやぶる本体の実行時依存ではありません。
+[DocBridge](https://github.com/salan70/docbridge)とその実行に使うNode.js・pnpmは開発・CI専用であり、みやぶる本体の実行時依存ではありません。
+npmと`package.json`は使いません。
 
 必要なものは **Nix（flakes有効）・direnv・nix-direnv** です。direnvのシェルフックを事前に設定してください。
 既にdotfiles側で設定している場合、再設定は不要です。
@@ -82,7 +83,6 @@ break_after_kuten = false
 ```sh
 cd miyaburu
 direnv allow
-just setup
 ```
 
 `.envrc`は`use flake`を実行します。**初回の許可後はcdだけで開発環境が自動的に有効**になります。
@@ -94,16 +94,17 @@ just setup
 | コマンド | 用途 |
 | --- | --- |
 | `just --list` | 利用できるコマンドの一覧 |
-| `just setup` | 開発用DocBridgeの依存関係を`package-lock.json`どおりに導入 |
 | `just check` | Rustの書式・テスト・DocBridgeの整合性を検証 |
 | `just fmt` | Rustのコードを整形 |
 | `just lint` | Clippyによる静的検査 |
 | `just build` | Rustをビルド |
 | `just docs-audit` | DocBridgeで未連携の候補を確認 |
+| `just docbridge <引数>` | DocBridgeの任意のサブコマンドを実行 |
 | `just versions` | ツールのバージョンを確認 |
 
 direnvを使わない場面では、`nix develop --command just check`でも実行できます。
-環境の依存は`flake.lock`、`Cargo.lock`、`package-lock.json`で固定しています。
+環境の依存は`flake.lock`と`Cargo.lock`で固定しています。
+DocBridgeの版は`.docbridge-version`で決め、`tools/docbridge.sh`が`pnpm dlx`でその版を取得して実行します。事前の導入は不要です。
 
 DocBridgeの設定は[docbridge.config.json](docbridge.config.json)にあります。
 [docs/specs/](docs/specs/)の仕様と`src/`の公開している宣言には、双方向リンクを設定しています。
