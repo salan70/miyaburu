@@ -10,8 +10,34 @@
       forAllSystems = f:
         nixpkgs.lib.genAttrs systems (system:
           f (import nixpkgs { inherit system; }));
+      cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
     in
     {
+      # `nix profile add github:salan70/miyaburu` と `nix run` で使う実行ファイル。
+      packages = forAllSystems (pkgs: {
+        default = pkgs.rustPlatform.buildRustPackage {
+          pname = cargoToml.package.name;
+          version = cargoToml.package.version;
+          # ビルドとテストに使うものだけを入力にし、文書だけの変更では作り直さない。
+          src = pkgs.lib.fileset.toSource {
+            root = ./.;
+            fileset = pkgs.lib.fileset.unions [
+              ./Cargo.toml
+              ./Cargo.lock
+              ./src
+              ./assets
+              ./tests
+            ];
+          };
+          cargoLock.lockFile = ./Cargo.lock;
+          meta = {
+            description = cargoToml.package.description;
+            homepage = cargoToml.package.repository;
+            mainProgram = "miyaburu";
+          };
+        };
+      });
+
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = with pkgs; [
