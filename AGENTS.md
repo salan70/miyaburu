@@ -31,7 +31,10 @@ dependency of the Rust executable.
 
 ## Validation
 
-After making Rust changes, run `cargo fmt --check` and `cargo test`.
-For local DocBridge checks, run `npm install` once, then `npm run docs:check`.
+The development toolchain is provided by `flake.nix` through `direnv` (`use flake`).
+Run `direnv allow` once after entering the repository. Afterward, simply enter the directory to activate tools.
+Use `just setup` once to install development-only DocBridge dependencies.
+Use `just check` for Rust formatting, tests, and DocBridge validation.
+Use `just --list` to discover additional recipes. CI runs these recipes through `nix develop --command`.
 
 No working browser preview is claimed by this initial scaffold.
