@@ -4,8 +4,26 @@
   box-sizing: border-box;
 }
 
+/* ページの中だけで使う値。色と書体は設定から受け取る。 */
+:root {
+  /* 1 行の高さ。文字の大きさと行の高さをページ全体で揃え、縦の余白もこの倍数で取る。 */
+  --mb-line: calc(var(--mb-line-height) * 1rem);
+  --mb-radius-mark: 2px;
+  --mb-radius-control: 6px;
+  --mb-radius-surface: 10px;
+  /* 文中のコードの文字色。警告の赤とは色相を変える。 */
+  --mb-color-code: #c4314b;
+  /* アラートの種類を示す色。記号と罫にだけ使い、面には敷かない。 */
+  --mb-color-note: #2f63c8;
+  --mb-color-tip: #1a7f4b;
+  --mb-color-warning: #9a6200;
+  --mb-color-caution: #c8372d;
+}
+
 html {
   background: var(--mb-color-bg);
+  /* 見出しなどの rem を、設定した本文の文字サイズに追従させる。 */
+  font-size: var(--mb-font-size);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -14,7 +32,7 @@ body {
   background: var(--mb-color-bg);
   color: var(--mb-color-text);
   font-family: var(--mb-font-body);
-  font-size: var(--mb-font-size);
+  font-size: 1rem;
   line-height: var(--mb-line-height);
   font-feature-settings: "palt";
   line-break: strict;
@@ -22,10 +40,14 @@ body {
   overflow-wrap: break-word;
 }
 
+::selection {
+  background: var(--mb-color-accent-soft);
+}
+
 .document {
   max-width: var(--mb-max-width);
   margin: 0 auto;
-  padding: 40px 20px 80px;
+  padding: calc(var(--mb-line) * 2) 24px calc(var(--mb-line) * 4);
 }
 
 .document > :first-child {
@@ -39,27 +61,62 @@ h3,
 h4,
 h5,
 h6 {
-  margin: 40px 0 12px;
-  font-weight: 700;
-  line-height: 1.3;
+  --mb-heading-level: 1;
+  position: relative;
+  /* 原文と同じく、前後に 1 行ずつ空ける。 */
+  margin: var(--mb-line) 0;
+  /* どの段も、本文と同じ大きさ、同じ行の高さの太字にする。段の深さは、記号の数と下の罫の長さで示す。 */
   font-size: 1rem;
+  font-weight: 700;
+  line-height: var(--mb-line-height);
+  /* 対応しているブラウザーでは、文節の切れ目で折り返す。 */
+  word-break: auto-phrase;
 }
 
-h1 { font-size: 1.5rem; }
-h2 { font-size: 1.25rem; }
-h3 { font-size: 1.125rem; }
+/* 見出しの下の罫。左端から引き、記号の数に比例して長くする。6 段目で本文の幅いっぱいになる。行の高さを変えないよう、行の外に置く。 */
+:is(h1, h2, h3, h4, h5, h6)::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: calc(100% * var(--mb-heading-level) / 6);
+  border-top: 1px solid var(--mb-color-border);
+}
+
+h2 {
+  --mb-heading-level: 2;
+}
+
+h3 {
+  --mb-heading-level: 3;
+}
+
+h4 {
+  --mb-heading-level: 4;
+}
+
+h5 {
+  --mb-heading-level: 5;
+}
+
+h6 {
+  --mb-heading-level: 6;
+}
 
 .md-marker {
   color: var(--mb-color-accent);
   font-family: var(--mb-font-code);
   font-weight: 400;
+  font-feature-settings: normal;
+  /* 書体の違いで行が高くならないようにする。 */
+  line-height: 1;
   user-select: none;
   -webkit-user-select: none;
 }
 
 /* 本文 */
 p {
-  margin: 0 0 16px;
+  margin: 0 0 var(--mb-line);
 }
 
 strong {
@@ -70,23 +127,40 @@ del {
   color: var(--mb-color-muted);
 }
 
+sup,
+sub {
+  line-height: 0;
+}
+
+/* 区切り線は 1 行ぶんの高さを取り、その中央に、本文の幅いっぱいの細い罫を引く。 */
 hr {
-  height: 0;
-  margin: 40px 0;
+  position: relative;
+  height: var(--mb-line);
+  margin: 0 0 var(--mb-line);
+  overflow: visible;
   border: 0;
+}
+
+hr::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
   border-top: 1px solid var(--mb-color-border);
 }
 
 img {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
+  border-radius: var(--mb-radius-control);
 }
 
 a {
   color: var(--mb-color-link);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
   transition: color 120ms;
 }
 
@@ -97,7 +171,7 @@ a:hover {
 /* リスト */
 ul,
 ol {
-  margin: 0 0 16px;
+  margin: 0 0 var(--mb-line);
   padding-left: 24px;
 }
 
@@ -127,96 +201,198 @@ ol {
 
 li > .li-body > ul,
 li > .li-body > ol {
-  margin: 4px 0 0;
+  margin: 0;
 }
 
-li.task > .li-body > input[type="checkbox"] {
+/* 項目の間を空けて書いたリストでは、チェックの印が段落の中に入る。どちらの形も同じに扱う。 */
+li.task > .li-body > input[type="checkbox"],
+li.task > .li-body > p:first-child > input[type="checkbox"] {
   margin: 0 8px 0 0;
   vertical-align: middle;
   accent-color: var(--mb-color-accent);
 }
 
+/* タスクのチェックは、済みを差し色で塗った箱で示す。 */
+@supports selector(:has(*)) {
+  li.task > .li-body {
+    --mb-check-top: calc((var(--mb-line-height) * 1em - 18px) / 2);
+    position: relative;
+    padding-left: 28px;
+  }
+
+  li.task > .li-body > input[type="checkbox"],
+  li.task > .li-body > p:first-child > input[type="checkbox"] {
+    position: absolute;
+    left: 0;
+    top: var(--mb-check-top);
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    opacity: 0;
+  }
+
+  li.task > .li-body::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: var(--mb-check-top);
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--mb-color-muted);
+    border-radius: var(--mb-radius-control);
+    background: var(--mb-color-bg);
+  }
+
+  li.task:has(> .li-body > input:checked, > .li-body > p:first-child > input:checked) > .li-body {
+    color: var(--mb-color-muted);
+  }
+
+  li.task:has(> .li-body > input:checked, > .li-body > p:first-child > input:checked) > .li-body::before {
+    border-color: var(--mb-color-accent);
+    background: var(--mb-color-accent);
+  }
+
+  li.task:has(> .li-body > input:checked, > .li-body > p:first-child > input:checked) > .li-body::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: calc(var(--mb-check-top) + 3px);
+    width: 6px;
+    height: 10px;
+    border: solid var(--mb-color-bg);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+}
+
 /* コード */
-code {
+code,
+pre {
   font-family: var(--mb-font-code);
-  font-size: 0.875em;
-  padding: 2px 6px;
-  border-radius: 2px;
-  background: var(--mb-color-surface);
+  font-feature-settings: normal;
+}
+
+code {
+  font-size: 1em;
+  /* 書体の違いで行が高くならないようにする。 */
+  line-height: 1;
+  /* 文中のコードは、面を敷かずに書体と文字色で示す。 */
+  color: var(--mb-color-code);
+}
+
+/* リンクの中のコードは、リンクの色のままにする。 */
+a code {
+  color: inherit;
 }
 
 pre {
-  margin: 0 0 16px;
+  margin: 0 0 var(--mb-line);
 }
 
-pre.code-block,
-pre.mermaid {
+/* 帯とコードと下の余白を合わせて、原文と同じ行数（コードの行数 + 2 行）の高さにする。 */
+pre.code-block {
   position: relative;
-  padding: 16px;
-  overflow-x: auto;
+  padding: 6px 0 calc(var(--mb-line) - 6px);
   border: 1px solid var(--mb-color-border);
-  border-radius: 6px;
+  border-radius: var(--mb-radius-surface);
   background: var(--mb-color-surface);
-  font-family: var(--mb-font-code);
-  font-size: 0.875rem;
-  line-height: 1.6;
+  font-size: 1rem;
+  line-height: var(--mb-line-height);
   white-space: pre;
 }
 
-pre.code-block code {
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
+/* 言語名を載せる帯。言語がないときは text と示し、ブロックの形を揃える。 */
+pre.code-block::before {
+  content: "text";
+  display: block;
+  height: var(--mb-line);
+  padding: 0 16px;
+  color: var(--mb-color-muted);
+  line-height: var(--mb-line);
+}
+
+pre.code-block[data-lang]::before {
+  content: attr(data-lang);
+}
+
+/* 横にスクロールするのはコードだけにして、帯とコピーボタンは動かさない。 */
+pre.code-block > code {
+  display: block;
+  padding: 0 16px;
+  overflow-x: auto;
+  color: inherit;
   font-size: inherit;
+  line-height: inherit;
 }
 
 pre.raw-html {
   color: var(--mb-color-muted);
 }
 
+pre.code-block > .code-copy {
+  position: absolute;
+  /* 帯の行の中央に置く。 */
+  top: calc(6px + (var(--mb-line) - 24px) / 2);
+  right: 8px;
+}
+
 pre.mermaid {
+  padding: var(--mb-line) 16px;
+  overflow-x: auto;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mb-radius-surface);
   background: var(--mb-color-bg);
+  white-space: pre;
+}
+
+pre.mermaid[data-processed] {
   text-align: center;
 }
 
-pre.code-block > .code-copy {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  opacity: 0;
+/* 図の箱は、ページのほかの面と同じく角を丸め、影を付けない。 */
+pre.mermaid .node rect,
+pre.mermaid rect.actor {
+  rx: 6px;
+  ry: 6px;
 }
 
-pre.code-block:hover > .code-copy,
-pre.code-block > .code-copy:focus-visible,
-pre.code-block > .code-copy[data-copied="true"] {
-  opacity: 1;
+pre.mermaid .node :is(rect, polygon, circle, path) {
+  filter: none !important;
 }
 
 /* 表 */
 .table-wrap {
-  margin: 0 0 16px;
+  margin: 0 0 var(--mb-line);
   overflow-x: auto;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mb-radius-surface);
 }
 
 table {
   border-collapse: collapse;
   min-width: 100%;
-  font-size: 0.9375rem;
 }
 
+/* 文字の行の高さは本文と同じにし、行の上下には余白を取る。 */
 th,
 td {
-  padding: 8px 12px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--mb-color-border);
   text-align: left;
   vertical-align: top;
+  /* 対応しているブラウザーでは、文節の切れ目で折り返す。 */
+  word-break: auto-phrase;
 }
 
 th {
+  background: var(--mb-color-surface);
   color: var(--mb-color-muted);
   font-weight: 700;
-  border-bottom-color: var(--mb-color-muted);
   white-space: nowrap;
+}
+
+tbody > tr:last-child > td {
+  border-bottom: 0;
 }
 
 .align-left { text-align: left; }
@@ -225,8 +401,8 @@ th {
 
 /* 引用とアラート */
 blockquote {
-  margin: 0 0 16px;
-  padding: 2px 0 2px 16px;
+  margin: 0 0 var(--mb-line);
+  padding: 0 0 0 20px;
   border-left: 2px solid var(--mb-color-accent);
   color: var(--mb-color-muted);
 }
@@ -235,25 +411,85 @@ blockquote > :last-child {
   margin-bottom: 0;
 }
 
+/* アラートは引用と同じ形にする。面は塗らず、種類は原文の記号と罫の色で示す。 */
 blockquote.alert {
-  padding: 12px 16px;
-  border-radius: 10px;
-  background: var(--mb-color-accent-soft);
+  --mb-alert: var(--mb-color-note);
+  border-left-color: var(--mb-alert);
   color: var(--mb-color-text);
+}
+
+blockquote.alert::before {
+  content: "[!NOTE]";
+  display: block;
+  color: var(--mb-alert);
+  font-family: var(--mb-font-code);
+  font-feature-settings: normal;
+}
+
+blockquote.alert-tip {
+  --mb-alert: var(--mb-color-tip);
+}
+
+blockquote.alert-tip::before {
+  content: "[!TIP]";
+}
+
+/* 重要は、色を足さずに本文の色で強く示す。 */
+blockquote.alert-important {
+  --mb-alert: var(--mb-color-text);
+}
+
+blockquote.alert-important::before {
+  content: "[!IMPORTANT]";
+}
+
+blockquote.alert-warning {
+  --mb-alert: var(--mb-color-warning);
+}
+
+blockquote.alert-warning::before {
+  content: "[!WARNING]";
+}
+
+blockquote.alert-caution {
+  --mb-alert: var(--mb-color-caution);
+}
+
+blockquote.alert-caution::before {
+  content: "[!CAUTION]";
 }
 
 /* 脚注 */
 .footnote-ref {
   font-size: 0.75rem;
-  line-height: 0;
+}
+
+.footnote-ref > a {
+  padding: 0 2px;
+  font-family: var(--mb-font-code);
+  text-decoration: none;
 }
 
 .footnote {
   display: flex;
   gap: 8px;
-  margin: 0 0 8px;
+  margin: 0;
   color: var(--mb-color-muted);
-  font-size: 0.875rem;
+}
+
+/* 最初の脚注の上に 1 行ぶんを取り、その中央の罫で本文と区切る。 */
+:not(.footnote) + .footnote {
+  position: relative;
+  padding-top: var(--mb-line);
+}
+
+:not(.footnote) + .footnote::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--mb-line) / 2);
+  right: 0;
+  left: 0;
+  border-top: 1px solid var(--mb-color-border);
 }
 
 .footnote-label {
@@ -270,21 +506,25 @@ blockquote.alert {
   margin-bottom: 0;
 }
 
-/* 省略表示とコピーボタン */
+/* 省略表示とコピーボタン。短くした値とボタンを 1 つの札にまとめる。 */
 .abbr {
   display: inline-flex;
-  gap: 4px;
+  gap: 2px;
   align-items: center;
   max-width: 100%;
+  padding: 0 2px 0 8px;
+  border-radius: var(--mb-radius-control);
+  background: var(--mb-color-surface);
+  line-height: 1.5;
   vertical-align: baseline;
 }
 
 .abbr-target {
-  border-bottom: 1px dotted var(--mb-color-muted);
   overflow-wrap: anywhere;
 }
 
 .copy-button {
+  --mb-copy-face: var(--mb-color-surface);
   position: relative;
   flex: none;
   width: 24px;
@@ -292,16 +532,17 @@ blockquote.alert {
   margin: 0;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--mb-radius-control);
   background: transparent;
   color: var(--mb-color-muted);
   cursor: pointer;
-  transition: background-color 120ms, border-color 120ms, color 120ms, opacity 120ms;
+  transition: background-color 120ms, border-color 120ms, color 120ms;
 }
 
 .copy-button:hover {
+  --mb-copy-face: var(--mb-color-bg);
   border-color: var(--mb-color-border);
-  background: var(--mb-color-surface);
+  background: var(--mb-color-bg);
   color: var(--mb-color-text);
 }
 
@@ -324,11 +565,7 @@ blockquote.alert {
 .copy-button::after {
   top: 8px;
   left: 9px;
-  background: var(--mb-color-bg);
-}
-
-.copy-button:hover::after {
-  background: var(--mb-color-surface);
+  background: var(--mb-copy-face);
 }
 
 /* コピー済みはチェックの印 */
@@ -358,6 +595,13 @@ blockquote.alert {
   outline-offset: 2px;
 }
 
+/* 広い画面では、題名の上を広く空ける。左右の端は、画面の幅によらず同じ線に揃える。 */
+@media screen and (min-width: 960px) {
+  .document {
+    padding-top: calc(var(--mb-line) * 3);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -377,7 +621,8 @@ blockquote.alert {
     padding: 0;
   }
 
-  pre.code-block {
+  pre.code-block > code {
+    overflow-x: visible;
     white-space: pre-wrap;
   }
 }

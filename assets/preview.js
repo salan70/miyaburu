@@ -54,8 +54,22 @@
     });
   }
 
+  // コードブロックの帯に出す言語名。生のHTMLは html として示す。
+  function codeLanguage(block) {
+    if (block.classList.contains('raw-html')) {
+      return 'html';
+    }
+    var code = block.querySelector('code');
+    var match = code && /(?:^|\s)language-(\S+)/.exec(code.className);
+    return match ? match[1] : '';
+  }
+
   function setupCodeCopy() {
     document.querySelectorAll('pre.code-block').forEach(function (block) {
+      var language = codeLanguage(block);
+      if (language) {
+        block.setAttribute('data-lang', language);
+      }
       var button = document.createElement('button');
       button.type = 'button';
       button.className = 'copy-button code-copy';
@@ -68,17 +82,61 @@
     });
   }
 
+  function cssValue(name) {
+    return window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  // base テーマのときに、図の色をページの色へ合わせる。
+  function mermaidThemeVariables() {
+    var bg = cssValue('--mb-color-bg');
+    var surface = cssValue('--mb-color-surface');
+    var text = cssValue('--mb-color-text');
+    var muted = cssValue('--mb-color-muted');
+    var border = cssValue('--mb-color-border');
+    var accent = cssValue('--mb-color-accent');
+    var accentSoft = cssValue('--mb-color-accent-soft');
+    return {
+      fontFamily: cssValue('--mb-font-body'),
+      background: bg,
+      primaryColor: accentSoft,
+      primaryTextColor: text,
+      primaryBorderColor: accent,
+      secondaryColor: surface,
+      secondaryTextColor: text,
+      secondaryBorderColor: border,
+      tertiaryColor: bg,
+      tertiaryTextColor: text,
+      tertiaryBorderColor: border,
+      lineColor: muted,
+      textColor: text,
+      edgeLabelBackground: bg,
+      clusterBkg: surface,
+      clusterBorder: border,
+      noteBkgColor: surface,
+      noteTextColor: text,
+      noteBorderColor: border
+    };
+  }
+
   function setupMermaid() {
     var blocks = document.querySelectorAll('pre.mermaid');
     if (!window.mermaid || blocks.length === 0) {
       return;
     }
     try {
-      window.mermaid.initialize({
+      var theme = document.body.dataset.mermaidTheme;
+      var options = {
         startOnLoad: false,
         securityLevel: 'strict',
-        theme: document.body.dataset.mermaidTheme
-      });
+        theme: theme,
+        fontFamily: cssValue('--mb-font-body'),
+        // 日本語のラベルが数文字で折り返されないよう、箱の中の幅を広げる。
+        flowchart: { wrappingWidth: 240 }
+      };
+      if (theme === 'base') {
+        options.themeVariables = mermaidThemeVariables();
+      }
+      window.mermaid.initialize(options);
       var result = window.mermaid.run({ querySelector: 'pre.mermaid' });
       if (result && typeof result.catch === 'function') {
         result.catch(function () {});
