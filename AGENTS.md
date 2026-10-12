@@ -1,40 +1,54 @@
-# Agent guidance
+# エージェント向けの指示
 
-This repository will implement **miyaburu**, a Rust Markdown preview CLI.
-Its public README and `docs/specs/` describe the current contract.
-Do not treat planned features as implemented.
+このリポジトリは、Rust製のMarkdownプレビューCLI **みやぶる（miyaburu）** を実装します。
+現在の契約は、公開している `README.md` と `docs/specs/` に書いてあります。
+実装していない機能を、実装済みとして扱わないでください。
 
-## Before changing behavior
+## 挙動を変える前に
 
-- Read the relevant `docs/specs/` section first.
-- Consult [uiux-numa](https://github.com/salan70/uiux-numa) for design
-  principles and reusable tokens, without importing its entire catalog.
-- Keep the user-selected Rust architecture and local/offline-first model.
-- Follow the existing visual direction: white digital Editorial × Soft Pop,
-  LINE Seed JP for prose and HackGen for code.
+- 先に `docs/specs/` の該当する節を読みます。
+- デザインの原則と再利用できるトークンは [uiux-numa](https://github.com/salan70/uiux-numa) を参照します。カタログ全体を持ち込むことはしません。
+- 利用者が選んだRustの構成と、ローカルかつオフラインで動く方針を保ちます。
+- 見た目の方向は、白を基調としたデジタルな Editorial × Soft Pop です。文章には LINE Seed JP、コードには HackGen を使います。
+- 文書とコメントは日本語で書きます。Rustの識別子とDocBridgeのリンク記法は英語のままにします。
 
-## DocBridge (dogfooding)
+## DocBridge（自分たちで使って確かめる）
 
-DocBridge is a **development-time** tool; it must not become a runtime
-dependency of the Rust executable.
+DocBridgeは**開発時だけ**のツールです。Rustの実行ファイルの実行時依存にしてはいけません。
 
-- Add `/// @doc docs/specs/<file>.md#<section>` on appropriate public Rust
-  declarations and reciprocal `<!-- @code src/<file>.rs#<Symbol> -->`
-  annotations immediately above matching Markdown headings.
-- Prefer linking real user-visible contracts, not every internal helper.
-- After changing linked code or docs, run `npm run docs:check`.
-- Run `npm run docs:audit` periodically to find candidates, not to force
-  meaningless one-to-one links.
-- When updating an annotated declaration, review its linked specification.
-- DocBridge requires Node.js >=22 **only for contributors and CI**.
-  End users should need just the compiled Rust executable.
+- 公開しているRustの宣言に `/// @doc docs/specs/<ファイル>.md#<節>` を付けます。
+  対応するMarkdownの見出しのすぐ上に `<!-- @code src/<ファイル>.rs#<シンボル> -->` を置き、相互に参照させます。
+- 節の指定は、見出しの文字列を小文字にしたものです。日本語はそのまま使えます（例：`#markdown原文の読み込み`）。
+  記号と空白は `-` に変わるので、見出しを変えたらリンクも直します。
+- メソッドは `Config::load` のように `型名::メソッド名` で指定します。
+- リンクするのは、利用者から見える契約です。内部の補助関数すべてに付ける必要はありません。
+- リンクのあるコードや文書を変えたら、`just docs-check` を実行します。
+- `just docs-audit` はときどき実行し、リンクの候補を探します。意味のない一対一のリンクを増やすためには使いません。
+- 注釈の付いた宣言を変えるときは、リンク先の仕様も見直します。
+- DocBridgeが必要とするNode.js（22以上）は、**開発者とCIだけ**のものです。
+  利用者は、コンパイルしたRustの実行ファイルだけで使えるようにします。
 
-## Validation
+## 構成
 
-The development toolchain is provided by `flake.nix` through `direnv` (`use flake`).
-Run `direnv allow` once after entering the repository. Afterward, simply enter the directory to activate tools.
-Use `just setup` once to install development-only DocBridge dependencies.
-Use `just check` for Rust formatting, tests, and DocBridge validation.
-Use `just --list` to discover additional recipes. CI runs these recipes through `nix develop --command`.
+| 場所 | 役割 |
+| --- | --- |
+| `src/lib.rs` | Markdownの読み込み。 |
+| `src/render.rs` | MarkdownからHTML断片への変換。 |
+| `src/config.rs` | TOMLの設定と検証。 |
+| `src/page.rs` | HTML文書の組み立て。 |
+| `src/main.rs` | コマンドラインの入口。 |
+| `assets/preview.css`、`assets/preview.js` | ページの見た目と動作。実行ファイルに埋め込みます。 |
+| `assets/vendor/` | 同梱しているMermaid。手で編集しません。 |
+| `tests/cli.rs` | 実行ファイルを通した結合テスト。 |
 
-No working browser preview is claimed by this initial scaffold.
+## 検証
+
+開発用のツールは `flake.nix` が用意し、`direnv`（`use flake`）で有効になります。
+リポジトリに入ったら、最初に一度だけ `direnv allow` を実行します。以降はディレクトリに入るだけで使えます。
+
+- `just setup`：開発時だけ使うDocBridgeの依存関係を、`package-lock.json` のとおりに入れます。最初に一度実行します。
+- `just check`：Rustの書式、テスト、DocBridgeの整合性を確かめます。
+- `just lint`：Clippyで静的に検査します。
+- `just --list`：ほかのレシピを確認できます。
+
+CIは、同じレシピを `nix develop --command` 経由で実行します。

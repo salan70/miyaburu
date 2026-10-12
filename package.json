@@ -1,7 +1,7 @@
 {
   "name": "miyaburu-development",
   "private": true,
-  "description": "Development-only documentation checks for the Rust miyaburu CLI",
+  "description": "Rust製CLI「みやぶる」の開発時だけに使う文書チェック",
   "engines": {
     "node": ">=22"
   },
