@@ -146,7 +146,160 @@
     }
   }
 
+  // 留めた見出しの上の余白（px）。
+  var PIN_PAD = 8;
+
+  // 留める行に入れる、見出しの中身の写し。リンクとボタンは働かせない。
+  function pinnedLine(heading) {
+    var line = document.createElement('div');
+    line.className = 'pinned-line';
+    heading.childNodes.forEach(function (node) {
+      line.appendChild(node.cloneNode(true));
+    });
+    line.querySelectorAll('[id]').forEach(function (el) {
+      el.removeAttribute('id');
+    });
+    line.querySelectorAll('button').forEach(function (el) {
+      el.remove();
+    });
+    line.querySelectorAll('a').forEach(function (el) {
+      var span = document.createElement('span');
+      while (el.firstChild) {
+        span.appendChild(el.firstChild);
+      }
+      el.replaceWith(span);
+    });
+    return line;
+  }
+
+  // 読んでいる位置の見出しと、その親の見出しを、画面の上端に重ねて留める。
+  // 次の見出しが届いたら、入れ替わる行を上へ押し出す。
+  function setupPinnedHeadings() {
+    var doc = document.querySelector('.document');
+    if (!doc) {
+      return;
+    }
+    var heads = [];
+    Array.prototype.forEach.call(doc.children, function (el) {
+      var match = /^H([1-6])$/.exec(el.tagName);
+      if (!match) {
+        return;
+      }
+      var head = { el: el, level: Number(match[1]), path: null, line: null, top: 0 };
+      var parent = null;
+      for (var i = heads.length - 1; i >= 0; i--) {
+        if (heads[i].level < head.level) {
+          parent = heads[i];
+          break;
+        }
+      }
+      head.path = (parent ? parent.path : []).concat([head]);
+      heads.push(head);
+    });
+    if (heads.length === 0) {
+      return;
+    }
+
+    var bar = document.createElement('div');
+    bar.className = 'pinned';
+    bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var inner = document.createElement('div');
+    inner.className = 'pinned-inner';
+    bar.appendChild(inner);
+    document.body.appendChild(bar);
+
+    // 1 行の高さは CSS が決める。見出しの文字が、留める前と同じ位置に来るように、行の中での文字の下がり幅を求める。
+    var probe = document.createElement('div');
+    probe.className = 'pinned-line';
+    inner.appendChild(probe);
+    bar.hidden = false;
+    var lineHeight = probe.getBoundingClientRect().height || 24;
+    bar.hidden = true;
+    inner.removeChild(probe);
+    var headingStyle = window.getComputedStyle(heads[0].el);
+    var headingLine = parseFloat(headingStyle.lineHeight) || parseFloat(headingStyle.fontSize) * 1.3;
+    var textOffset = Math.max(0, (lineHeight - headingLine) / 2);
+
+    // 見出しが留まる位置。親の行の数だけ下がる。
+    function slotTop(head) {
+      return PIN_PAD + (head.path.length - 1) * lineHeight;
+    }
+
+    function buildLine(head) {
+      var line = pinnedLine(head.el);
+      line.addEventListener('click', function () {
+        var target = slotTop(head) + textOffset;
+        window.scrollBy(0, head.el.getBoundingClientRect().top - target + 1);
+      });
+      return line;
+    }
+
+    var shown = null;
+    var waiting = false;
+
+    function update() {
+      waiting = false;
+      var current = null;
+      for (var i = 0; i < heads.length; i++) {
+        var head = heads[i];
+        head.top = head.el.getBoundingClientRect().top - textOffset;
+        if (head.top <= slotTop(head)) {
+          current = i;
+        }
+      }
+      if (current === null) {
+        bar.hidden = true;
+        shown = null;
+        return;
+      }
+
+      var stack = heads[current].path;
+      var count = stack.length;
+      if (shown !== heads[current]) {
+        shown = heads[current];
+        inner.textContent = '';
+        stack.forEach(function (head, index) {
+          if (!head.line) {
+            head.line = buildLine(head);
+          }
+          head.line.style.top = (PIN_PAD + index * lineHeight) + 'px';
+          head.line.style.zIndex = String(count - index);
+          inner.appendChild(head.line);
+        });
+      }
+
+      // 次の見出しの親にあたる行は残し、それより深い行を、次の見出しに押される分だけ上げる。
+      var keep = count;
+      var shift = 0;
+      var next = heads[current + 1];
+      if (next) {
+        keep = Math.min(count, next.path.length - 1);
+        shift = PIN_PAD + count * lineHeight - next.top;
+        shift = Math.max(0, Math.min(shift, (count - keep) * lineHeight));
+      }
+      stack.forEach(function (head, index) {
+        head.line.style.transform = index >= keep && shift > 0 ? 'translateY(' + (-shift) + 'px)' : '';
+      });
+      bar.style.height = Math.round(PIN_PAD + count * lineHeight - shift + textOffset) + 'px';
+      bar.hidden = false;
+    }
+
+    function requestUpdate() {
+      if (!waiting) {
+        waiting = true;
+        window.requestAnimationFrame(update);
+      }
+    }
+
+    window.addEventListener('scroll', requestUpdate, { passive: true });
+    window.addEventListener('resize', requestUpdate);
+    window.addEventListener('load', requestUpdate);
+    update();
+  }
+
   setupCopyButtons();
   setupCodeCopy();
   setupMermaid();
+  setupPinnedHeadings();
 })();

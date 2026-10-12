@@ -25,6 +25,8 @@ html {
   /* 見出しなどの rem を、設定した本文の文字サイズに追従させる。 */
   font-size: var(--mb-font-size);
   -webkit-text-size-adjust: 100%;
+  /* ページ内のリンクで移動した先が、上端に留めた見出しの下に隠れないようにする。 */
+  scroll-padding-top: 7rem;
 }
 
 body {
@@ -589,6 +591,50 @@ blockquote.alert-caution::before {
   display: none;
 }
 
+/* 読んでいる位置の見出しを、親の見出しと重ねて画面の上端に留める。行の位置と全体の高さは、スクリプトが決める。 */
+.pinned {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 10;
+  overflow: hidden;
+  background: var(--mb-color-bg);
+}
+
+/* 左右の端は、本文と同じ線に揃える。 */
+.pinned-inner {
+  position: relative;
+  max-width: var(--mb-max-width);
+  height: 100%;
+  margin: 0 auto;
+}
+
+/* 本文と区切る罫 */
+.pinned-inner::after {
+  content: "";
+  position: absolute;
+  right: 24px;
+  bottom: 0;
+  left: 24px;
+  z-index: 20;
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.pinned-line {
+  position: absolute;
+  right: 24px;
+  left: 24px;
+  overflow: hidden;
+  height: var(--mb-line);
+  background: var(--mb-color-bg);
+  font-weight: 700;
+  line-height: var(--mb-line);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 /* フォーカスと動き */
 :focus-visible {
   outline: 2px solid var(--mb-color-accent);
@@ -612,7 +658,8 @@ blockquote.alert-caution::before {
 }
 
 @media print {
-  .copy-button {
+  .copy-button,
+  .pinned {
     display: none;
   }
 
