@@ -13,7 +13,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use miyaburu::config::{Config, find_config_file};
 use miyaburu::page::{MERMAID_FILE_NAME, MERMAID_JS, PageInput, build_page};
 use miyaburu::read_markdown;
-use miyaburu::render::{RenderOptions, render_markdown};
+use miyaburu::render::{RenderOptions, SharedAsset, render_markdown, render_shared_markdown};
+
+mod share;
 
 const USAGE: &str = "\
 使い方: miyaburu [オプション] <Markdownファイル>
@@ -23,7 +25,10 @@ Markdownファイルを読みやすいHTMLに変換し、既定のブラウザ�
 オプション:
   -c, --config <ファイル>      設定ファイル（TOML）を指定する
   -o, --output <ディレクトリ>  HTMLの出力先を指定する（既定はキャッシュ用ディレクトリ）
-      --no-open                ブラウザーを開かず、生成したHTMLのパスだけを表示する
+      --no-open                ブラウザーを開かない（共有は続ける）
+      --no-share               共有せずローカルHTMLだけを生成する
+      --stop <Markdownファイル> 指定文書の共有を停止する
+      --stop-all               すべての共有を停止する
   -h, --help                   この説明を表示する
   -V, --version                バージョンを表示する
 ";
@@ -33,6 +38,8 @@ enum Invocation {
     Help,
     Version,
     Preview(PreviewArgs),
+    Stop(PathBuf),
+    StopAll,
 }
 
 #[derive(Debug, PartialEq)]
@@ -41,13 +48,27 @@ struct PreviewArgs {
     config: Option<PathBuf>,
     output: Option<PathBuf>,
     open: bool,
+    share: bool,
 }
 
 /// 引数を解釈して実行し、結果を終了コードで返す。
 ///
 /// @doc docs/specs/cli.md#終了コード
 fn main() -> ExitCode {
-    let invocation = match parse_args(env::args_os().skip(1)) {
+    let raw: Vec<_> = env::args_os().skip(1).collect();
+    if raw.first().is_some_and(|arg| arg == "--share-daemon") {
+        return match raw.get(1).filter(|_| raw.len() == 2) {
+            Some(path) => match share::daemon(Path::new(path)) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(message) => {
+                    eprintln!("miyaburu: {message}");
+                    ExitCode::FAILURE
+                }
+            },
+            None => ExitCode::from(2),
+        };
+    }
+    let invocation = match parse_args(raw) {
         Ok(invocation) => invocation,
         Err(message) => {
             eprintln!("miyaburu: {message}\n\n{USAGE}");
@@ -64,6 +85,8 @@ fn main() -> ExitCode {
             println!("miyaburu {}", env!("CARGO_PKG_VERSION"));
             return ExitCode::SUCCESS;
         }
+        Invocation::Stop(path) => return stop_sharing(Some(&path)),
+        Invocation::StopAll => return stop_sharing(None),
         Invocation::Preview(args) => args,
     };
 
@@ -74,16 +97,23 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    println!("{}", page.display());
+    println!("{}", page.page.display());
+    if let Err(error) = io::stdout().flush() {
+        eprintln!("miyaburu: HTMLパスを表示できません: {error}");
+        return ExitCode::FAILURE;
+    }
 
     if args.open
-        && let Err(error) = open_in_browser(&page)
+        && let Err(error) = open_in_browser(&page.page)
     {
         eprintln!(
             "miyaburu: 「{}」をブラウザーで開けません: {error}",
-            page.display()
+            page.page.display()
         );
         return ExitCode::FAILURE;
+    }
+    if args.share {
+        share_preview(&page);
     }
     ExitCode::SUCCESS
 }
@@ -96,6 +126,9 @@ fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, St
     let mut config = None;
     let mut output = None;
     let mut open = true;
+    let mut sharing = true;
+    let mut stop = None;
+    let mut stop_all = false;
     let mut options_ended = false;
 
     let mut args = args.into_iter();
@@ -117,18 +150,37 @@ fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, St
             "-h" | "--help" => return Ok(Invocation::Help),
             "-V" | "--version" => return Ok(Invocation::Version),
             "--no-open" => open = false,
+            "--no-share" => sharing = false,
+            "--stop" => stop = Some(option_value(name, inline_value, &mut args)?),
+            "--stop-all" => stop_all = true,
             "-c" | "--config" => config = Some(option_value(name, inline_value, &mut args)?),
             "-o" | "--output" => output = Some(option_value(name, inline_value, &mut args)?),
             _ => return Err(format!("不明なオプションです: {name}")),
         }
     }
 
+    if stop.is_some() || stop_all {
+        if input.is_some()
+            || config.is_some()
+            || output.is_some()
+            || !open
+            || !sharing
+            || (stop.is_some() && stop_all)
+        {
+            return Err("共有停止はほかのオプションと併用できません".into());
+        }
+        return Ok(match stop {
+            Some(path) => Invocation::Stop(path),
+            None => Invocation::StopAll,
+        });
+    }
     let input = input.ok_or("Markdownファイルを指定してください")?;
     Ok(Invocation::Preview(PreviewArgs {
         input,
         config,
         output,
         open,
+        share: sharing,
     }))
 }
 
@@ -147,8 +199,17 @@ fn option_value(
     }
 }
 
-/// HTMLを生成し、書き出した `index.html` のパスを返す。
-fn generate(args: &PreviewArgs) -> Result<PathBuf, String> {
+struct Generated {
+    page: PathBuf,
+    source: String,
+    config: Config,
+    options: RenderOptions,
+    document: PathBuf,
+    document_name: String,
+}
+
+/// ローカルHTMLを生成し、共有にも使う原文と設定を保持する。
+fn generate(args: &PreviewArgs) -> Result<Generated, String> {
     let source = read_markdown(&args.input)
         .map_err(|error| format!("「{}」を読み込めません: {error}", args.input.display()))?;
     let config = load_config(args.config.as_deref())?;
@@ -186,7 +247,112 @@ fn generate(args: &PreviewArgs) -> Result<PathBuf, String> {
     }
     let page = directory.join("index.html");
     write_private(&page, html.as_bytes(), &document)?;
-    Ok(page)
+    Ok(Generated {
+        page,
+        source,
+        config,
+        options,
+        document,
+        document_name,
+    })
+}
+
+fn share_preview(generated: &Generated) {
+    let Generated {
+        source,
+        config,
+        options,
+        document,
+        document_name,
+        ..
+    } = generated;
+    let result = (|| {
+        let shared = render_shared_markdown(source, options)?;
+        let html = build_page(&PageInput {
+            rendered: &shared.rendered,
+            config,
+            document_name,
+            nonce: &nonce(),
+        });
+        let mut assets = shared.assets;
+        if shared.rendered.has_mermaid {
+            assets.push(SharedAsset {
+                path: format!("/{MERMAID_FILE_NAME}"),
+                content_type: "application/javascript".into(),
+                bytes: MERMAID_JS.to_vec(),
+            });
+        }
+        share::start_or_update(
+            document,
+            &share::Snapshot {
+                html: html.into_bytes(),
+                assets,
+            },
+            &share_cache_root(),
+        )
+    })();
+    match result {
+        Ok(url) => {
+            eprintln!("共有URL: {url}");
+            match qrcode::QrCode::new(url.as_bytes()) {
+                Ok(code) => {
+                    eprintln!(
+                        "{}",
+                        code.render::<qrcode::render::unicode::Dense1x2>()
+                            .quiet_zone(true)
+                            .build()
+                    );
+                }
+                Err(error) => eprintln!("miyaburu: QRコードを生成できません: {error}"),
+            }
+            eprintln!(
+                "共有停止: miyaburu --stop \"{}\"（すべて停止: miyaburu --stop-all）",
+                document.display()
+            );
+        }
+        Err(message) => {
+            eprintln!("miyaburu: 共有できません: {message}。ローカルHTMLを使用します")
+        }
+    }
+}
+
+fn share_cache_root() -> PathBuf {
+    user_cache_dir()
+        .unwrap_or_else(env::temp_dir)
+        .join("miyaburu")
+}
+
+/// 文書が削除されていても、同じ絶対パスで共有停止を試みる。
+///
+/// @doc docs/specs/cli.md#共有の停止
+fn stop_sharing(document: Option<&Path>) -> ExitCode {
+    let result = match document {
+        Some(path) => {
+            let absolute = fs::canonicalize(path).or_else(|_| {
+                let absolute = std::path::absolute(path)?;
+                Ok::<_, io::Error>(match (absolute.parent(), absolute.file_name()) {
+                    (Some(parent), Some(name)) => fs::canonicalize(parent)
+                        .map(|parent| parent.join(name))
+                        .unwrap_or(absolute),
+                    _ => absolute,
+                })
+            });
+            absolute
+                .map_err(|error| error.to_string())
+                .and_then(|path| share::stop(&path, &share_cache_root()))
+        }
+        None => share::stop_all(&share_cache_root()),
+    };
+    match result {
+        Ok(()) => {
+            eprintln!("共有を停止しました（停止済みも含みます）");
+            ExitCode::SUCCESS
+        }
+        Err(message) => {
+            eprintln!("miyaburu: {message}");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 fn write_error(path: &Path, error: &io::Error) -> String {
@@ -369,6 +535,7 @@ mod tests {
                 config: None,
                 output: None,
                 open: true,
+                share: true,
             }))
         );
     }
@@ -382,6 +549,7 @@ mod tests {
                 config: Some(PathBuf::from("a.toml")),
                 output: Some(PathBuf::from("out")),
                 open: false,
+                share: true,
             }))
         );
     }
@@ -395,6 +563,7 @@ mod tests {
                 config: None,
                 output: None,
                 open: true,
+                share: true,
             }))
         );
     }

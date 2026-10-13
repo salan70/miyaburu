@@ -38,6 +38,7 @@ impl Drop for Workspace {
 /// 利用者の設定に左右されないよう、作業ディレクトリで実行し、設定の探索先も中に閉じ込める。
 fn miyaburu(workspace: &Workspace, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_miyaburu"))
+        .arg("--no-share")
         .args(args)
         .current_dir(&workspace.0)
         .env("HOME", &workspace.0)

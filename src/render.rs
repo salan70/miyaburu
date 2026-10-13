@@ -58,17 +58,69 @@ pub struct Rendered {
 ///
 /// @doc docs/specs/rendering.md#変換の規則
 pub fn render_markdown(source: &str, options: &RenderOptions) -> Rendered {
+    render_internal(source, options, false)
+        .expect("ローカル描画は画像を読み込まない")
+        .rendered
+}
+
+/// 共有で配信する、読み込み済みの画像。
+///
+/// @doc docs/specs/shared-rendering.md#共有画像
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SharedAsset {
+    pub path: String,
+    pub content_type: String,
+    pub bytes: Vec<u8>,
+}
+
+/// 共有用のHTML断片と画像。
+///
+/// @doc docs/specs/shared-rendering.md#共有描画結果
+pub struct SharedRendered {
+    pub rendered: Rendered,
+    pub assets: Vec<SharedAsset>,
+}
+
+/// ローカル画像を取り込み、ローカルリンクを無効にして共有用に描画する。
+///
+/// @doc docs/specs/shared-rendering.md#共有描画
+pub fn render_shared_markdown(
+    source: &str,
+    options: &RenderOptions,
+) -> Result<SharedRendered, String> {
+    render_internal(source, options, true)
+}
+
+fn render_internal(
+    source: &str,
+    options: &RenderOptions,
+    shared: bool,
+) -> Result<SharedRendered, String> {
     let parser_options = Options::ENABLE_TABLES
         | Options::ENABLE_FOOTNOTES
         | Options::ENABLE_STRIKETHROUGH
         | Options::ENABLE_TASKLISTS
         | Options::ENABLE_GFM;
-    let events: Vec<(Event, Range<usize>)> = Parser::new_ext(source, parser_options)
+    let mut events: Vec<(Event, Range<usize>)> = Parser::new_ext(source, parser_options)
         .into_offset_iter()
         .collect();
+    let mut assets = Vec::new();
+    if shared {
+        for (event, _) in &mut events {
+            if let Event::Start(Tag::Image { dest_url, .. }) = event
+                && is_local_reference(dest_url)
+            {
+                let (asset, suffix) =
+                    shared_image(dest_url, options.base_dir.as_deref(), assets.len())?;
+                *dest_url = format!("{}{suffix}", asset.path).into();
+                assets.push(asset);
+            }
+        }
+    }
     let mut renderer = Renderer {
         src: source,
         opts: options,
+        shared,
         out: String::new(),
         pending: None,
         in_heading: false,
@@ -86,11 +138,14 @@ pub fn render_markdown(source: &str, options: &RenderOptions) -> Rendered {
     while i < events.len() {
         i = renderer.step(&events, i);
     }
-    Rendered {
-        body_html: renderer.out,
-        title: renderer.title,
-        has_mermaid: renderer.has_mermaid,
-    }
+    Ok(SharedRendered {
+        rendered: Rendered {
+            body_html: renderer.out,
+            title: renderer.title,
+            has_mermaid: renderer.has_mermaid,
+        },
+        assets,
+    })
 }
 
 const KUTEN_BREAK: &str = "<br class=\"kuten-break\">";
@@ -113,6 +168,7 @@ struct ListState {
 struct Renderer<'a, 'o> {
     src: &'a str,
     opts: &'o RenderOptions,
+    shared: bool,
     out: String,
     /// 直前の文が `。` で終わり、改行をまだ出していない。
     pending: Option<usize>,
@@ -380,7 +436,12 @@ impl Renderer<'_, '_> {
                     self.url_atom(dest_url);
                     return i + 3;
                 }
-                match resolve_url(dest_url, self.opts.base_dir.as_deref()) {
+                let href = if self.shared && is_local_reference(dest_url) {
+                    None
+                } else {
+                    resolve_url(dest_url, self.opts.base_dir.as_deref())
+                };
+                match href {
                     Some(href) => {
                         self.out
                             .push_str(&format!("<a href=\"{}\">", escape(&href)));
@@ -392,7 +453,12 @@ impl Renderer<'_, '_> {
             Tag::Image { dest_url, .. } => {
                 self.resolve_pending();
                 let (alt, end) = collect_plain(events, i + 1);
-                match resolve_url(dest_url, self.opts.base_dir.as_deref()) {
+                let src = if self.shared && dest_url.starts_with("/assets/") {
+                    Some(dest_url.to_string())
+                } else {
+                    resolve_url(dest_url, self.opts.base_dir.as_deref())
+                };
+                match src {
                     Some(src) => self.out.push_str(&format!(
                         "<img src=\"{}\" alt=\"{}\" loading=\"lazy\">",
                         escape(&src),
@@ -872,6 +938,125 @@ fn escape(s: &str) -> String {
     out
 }
 
+fn is_local_reference(dest: &str) -> bool {
+    let url = dest.trim();
+    if url.starts_with('#') || url.starts_with("//") {
+        return false;
+    }
+    if let Some((scheme, _)) = url.split_once(':')
+        && scheme.starts_with(|c: char| c.is_ascii_alphabetic())
+        && scheme
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+    {
+        return scheme.eq_ignore_ascii_case("file");
+    }
+    true
+}
+
+fn shared_image(
+    dest: &str,
+    base: Option<&Path>,
+    id: usize,
+) -> Result<(SharedAsset, String), String> {
+    let url = dest.trim();
+    let split = url.find(['?', '#']).unwrap_or(url.len());
+    let (encoded, suffix) = url.split_at(split);
+    let encoded = if encoded
+        .get(..5)
+        .is_some_and(|s| s.eq_ignore_ascii_case("file:"))
+    {
+        let rest = &encoded[5..];
+        if let Some(rest) = rest.strip_prefix("//") {
+            if rest.starts_with('/') {
+                rest
+            } else if let Some(rest) = rest.strip_prefix("localhost/") {
+                // localhost以外のホストはローカルファイルとして取り込まない。
+                return shared_image(&format!("/{rest}{suffix}"), base, id);
+            } else {
+                return Err(format!("共有画像のホストを許可できません: {dest}"));
+            }
+        } else {
+            rest
+        }
+    } else {
+        encoded
+    };
+    let mut decoded = Vec::new();
+    let bytes = encoded.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hex = bytes
+                .get(i + 1..i + 3)
+                .and_then(|s| std::str::from_utf8(s).ok())
+                .and_then(|s| u8::from_str_radix(s, 16).ok())
+                .ok_or_else(|| format!("共有画像のパーセント表記が不正です: {dest}"))?;
+            decoded.push(hex);
+            i += 3;
+        } else {
+            decoded.push(bytes[i]);
+            i += 1;
+        }
+    }
+    let decoded = String::from_utf8(decoded)
+        .map_err(|_| format!("共有画像のパスがUTF-8ではありません: {dest}"))?;
+    if decoded.is_empty() || decoded.contains('\0') {
+        return Err(format!("共有画像のパスが不正です: {dest}"));
+    }
+    let path = Path::new(&decoded);
+    let path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        base.ok_or_else(|| format!("共有画像の基準ディレクトリがありません: {dest}"))?
+            .join(path)
+    };
+    let bytes = std::fs::read(&path)
+        .map_err(|e| format!("共有画像を読み込めません（{}）: {e}", path.display()))?;
+    let content_type = raster_content_type(&bytes).ok_or_else(|| {
+        format!(
+            "共有画像は対応するラスター画像ではありません（SVGは配信しません）: {}",
+            path.display()
+        )
+    })?;
+    Ok((
+        SharedAsset {
+            path: format!("/assets/{id:016x}"),
+            content_type: content_type.to_string(),
+            bytes,
+        },
+        suffix.to_string(),
+    ))
+}
+
+fn raster_content_type(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.len() >= 33
+        && bytes.starts_with(b"\x89PNG\r\n\x1a\n")
+        && bytes.get(8..16) == Some(b"\0\0\0\rIHDR")
+    {
+        Some("image/png")
+    } else if bytes.len() >= 4 && bytes.starts_with(b"\xff\xd8\xff") {
+        Some("image/jpeg")
+    } else if bytes.len() >= 13 && (bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a")) {
+        Some("image/gif")
+    } else if bytes.len() >= 20
+        && bytes.starts_with(b"RIFF")
+        && bytes.get(8..12) == Some(b"WEBP")
+        && matches!(bytes.get(12..16), Some(b"VP8 " | b"VP8L" | b"VP8X"))
+    {
+        Some("image/webp")
+    } else if bytes.len() >= 26 && bytes.starts_with(b"BM") {
+        Some("image/bmp")
+    } else if bytes.len() >= 8 && (bytes.starts_with(b"II\x2a\0") || bytes.starts_with(b"MM\0\x2a"))
+    {
+        Some("image/tiff")
+    } else if bytes.len() >= 22 && bytes.starts_with(b"\0\0\x01\0") {
+        Some("image/x-icon")
+    } else {
+        None
+    }
+}
+
 /// リンク先と画像の参照先を検査し、必要なら `file://` に直す。許可しないときは `None`。
 fn resolve_url(dest: &str, base_dir: Option<&Path>) -> Option<String> {
     let cleaned: String = dest.chars().filter(|c| !c.is_control()).collect();
@@ -937,6 +1122,94 @@ fn percent_encode(path: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shared_images_paths_suffixes_and_links() {
+        let dir = std::env::temp_dir().join(format!("miyaburu-shared-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("日本 語%23.png");
+        let mut png = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();
+        png.resize(33, 0);
+        std::fs::write(&path, &png).unwrap();
+        let options = RenderOptions {
+            base_dir: Some(dir.clone()),
+            ..Default::default()
+        };
+        let source = format!(
+            "![相対](日本%20語%2523.png?size=1#位置) ![絶対](<{}>) [文書](next.md) [外部](https://example.com) [節](#節) ![外部画像](https://example.com/a.png)",
+            percent_encode(&path.to_str().unwrap().replace('%', "%25"))
+        );
+        let result = render_shared_markdown(&source, &options).unwrap();
+        assert_eq!(result.assets.len(), 2);
+        assert_eq!(result.assets[0].bytes, png);
+        assert_eq!(result.assets[0].content_type, "image/png");
+        assert!(
+            result
+                .rendered
+                .body_html
+                .contains("/assets/0000000000000000?size=1#位置")
+        );
+        assert!(!result.rendered.body_html.contains("file://"));
+        assert!(!result.rendered.body_html.contains("href=\"next.md"));
+        assert!(result.rendered.body_html.contains("文書"));
+        assert!(
+            result
+                .rendered
+                .body_html
+                .contains("href=\"https://example.com\"")
+        );
+        assert!(result.rendered.body_html.contains("href=\"#節\""));
+        assert!(
+            result
+                .rendered
+                .body_html
+                .contains("src=\"https://example.com/a.png\"")
+        );
+        assert!(
+            render_markdown(&source, &options)
+                .body_html
+                .contains("file://")
+        );
+        for name in ["missing.png", "bad%.png", "bad%00.png", "bad%ff.png"] {
+            assert!(render_shared_markdown(&format!("![画像]({name})"), &options).is_err());
+        }
+        std::fs::write(
+            dir.join("fake.png"),
+            b"<svg xmlns='http://www.w3.org/2000/svg'/>",
+        )
+        .unwrap();
+        assert!(render_shared_markdown("![画像](fake.png)", &options).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn shared_raster_signatures_reject_text_and_truncation() {
+        for data in [
+            b"<svg/>".as_slice(),
+            b"\x89PNG\r\n\x1a\n",
+            b"GIF89a",
+            b"BM",
+            b"RIFF0000WEBP",
+        ] {
+            assert_eq!(raster_content_type(data), None);
+        }
+        let mut gif = b"GIF89a".to_vec();
+        gif.resize(13, 0);
+        assert_eq!(raster_content_type(&gif), Some("image/gif"));
+        assert_eq!(raster_content_type(b"\xff\xd8\xff\xe0"), Some("image/jpeg"));
+        assert_eq!(
+            raster_content_type(b"RIFF0000WEBPVP8 0000"),
+            Some("image/webp")
+        );
+        assert_eq!(
+            raster_content_type(b"II\x2a\0\x08\0\0\0"),
+            Some("image/tiff")
+        );
+        assert!(!is_local_reference("HTTPS://example.com/image"));
+        assert!(!is_local_reference("#節"));
+        assert!(!is_local_reference("javascript:alert(1)"));
+        assert!(is_local_reference("FILE:///tmp/image.png"));
+    }
 
     fn html(src: &str) -> String {
         render_markdown(src, &RenderOptions::default()).body_html

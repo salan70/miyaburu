@@ -6,6 +6,10 @@ description = "Markdownを見やすくブラウザーで表示するRust製CLI"
 repository = "https://github.com/salan70/miyaburu"
 
 [dependencies]
+fs2 = "0.4"
+libc = "0.2"
+serde_json = "1"
+qrcode = { version = "0.14", default-features = false }
 pulldown-cmark = { version = "0.13", default-features = false }
 serde = { version = "1", features = ["derive"] }
 # 正規表現はRustだけで動く fancy-regex にして、Cのライブラリ（Oniguruma）を持ち込まない。
