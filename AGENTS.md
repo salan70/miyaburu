@@ -33,6 +33,12 @@ DocBridgeは**開発時だけ**のツールです。Rustの実行ファイルの
 - DocBridgeは `tools/docbridge.sh` が、`.docbridge-version` の版を `pnpm dlx` で呼び出します。
   npmと `package.json` は使いません。版を上げるときは `.docbridge-version` を書き換えます。
 
+## プレビューの共有
+
+- 計画書や設計書などのMarkdownを書いたら、`miyaburu <ファイル>` で開きます。
+- 実行結果から共有URLを取得できたら、ユーザーへの返答にクリックできるMarkdownリンクを載せます。QRコード画像はチャットに貼りません。
+- 共有URLを取得できない場合は、生成されたローカルHTMLのパスを伝えます。URLを作り上げてはいけません。
+
 ## 構成
 
 | 場所 | 役割 |
