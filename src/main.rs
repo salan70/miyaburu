@@ -20,19 +20,19 @@ mod share;
 const USAGE: &str = "\
 使い方: miyaburu [オプション] <Markdownファイル>
 
-Markdownファイルを読みやすいHTMLに変換し、既定のブラウザーで開きます。
+MarkdownファイルをHTMLに変換して共有URLを返します。既定ではブラウザーを開きません。
 
 オプション:
   -c, --config <ファイル>      設定ファイル（TOML）を指定する
   -o, --output <ディレクトリ>  HTMLの出力先を指定する（既定はキャッシュ用ディレクトリ）
       --no-open                ブラウザーを開かない（共有は続ける）
+      --open                   ブラウザーで開く
       --no-share               共有せずローカルHTMLだけを生成する
       --stop <Markdownファイル> 指定文書の共有を停止する
       --stop-all               すべての共有を停止する
   -h, --help                   この説明を表示する
   -V, --version                バージョンを表示する
 
-環境変数 MIYABURU_NO_OPEN=1 でも、通常プレビューのブラウザー起動を抑止できます。
 ";
 
 #[derive(Debug, PartialEq)]
@@ -106,7 +106,6 @@ fn main() -> ExitCode {
     }
 
     if args.open
-        && env::var_os("MIYABURU_NO_OPEN").as_deref() != Some(std::ffi::OsStr::new("1"))
         && let Err(error) = open_in_browser(&page.page)
     {
         eprintln!(
@@ -128,7 +127,8 @@ fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, St
     let mut input = None;
     let mut config = None;
     let mut output = None;
-    let mut open = true;
+    let mut open = false;
+    let mut open_specified = false;
     let mut sharing = true;
     let mut stop = None;
     let mut stop_all = false;
@@ -152,7 +152,14 @@ fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, St
             "--" => options_ended = true,
             "-h" | "--help" => return Ok(Invocation::Help),
             "-V" | "--version" => return Ok(Invocation::Version),
-            "--no-open" => open = false,
+            "--open" => {
+                open = true;
+                open_specified = true;
+            }
+            "--no-open" => {
+                open = false;
+                open_specified = true;
+            }
             "--no-share" => sharing = false,
             "--stop" => stop = Some(option_value(name, inline_value, &mut args)?),
             "--stop-all" => stop_all = true,
@@ -166,7 +173,7 @@ fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, St
         if input.is_some()
             || config.is_some()
             || output.is_some()
-            || !open
+            || open_specified
             || !sharing
             || (stop.is_some() && stop_all)
         {
@@ -537,7 +544,7 @@ mod tests {
                 input: PathBuf::from("docs/plan.md"),
                 config: None,
                 output: None,
-                open: true,
+                open: false,
                 share: true,
             }))
         );
@@ -565,7 +572,7 @@ mod tests {
                 input: PathBuf::from("-plan.md"),
                 config: None,
                 output: None,
-                open: true,
+                open: false,
                 share: true,
             }))
         );

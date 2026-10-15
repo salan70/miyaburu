@@ -118,7 +118,7 @@ fn response_body(response: &[u8]) -> &[u8] {
 #[test]
 fn default_sharing_updates_and_enforces_http_allowlist() {
     let workspace = Workspace::new(FAKE);
-    let first = workspace.run(&["--no-open", "note.md"]);
+    let first = workspace.run(&["note.md"]);
     success(&first);
     assert_eq!(String::from_utf8_lossy(&first.stdout).lines().count(), 1);
     assert!(String::from_utf8_lossy(&first.stderr).contains("https://fake.trycloudflare.com"));
