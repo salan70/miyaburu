@@ -31,6 +31,8 @@ Markdownファイルを読みやすいHTMLに変換し、既定のブラウザ�
       --stop-all               すべての共有を停止する
   -h, --help                   この説明を表示する
   -V, --version                バージョンを表示する
+
+環境変数 MIYABURU_NO_OPEN=1 でも、通常プレビューのブラウザー起動を抑止できます。
 ";
 
 #[derive(Debug, PartialEq)]
@@ -104,6 +106,7 @@ fn main() -> ExitCode {
     }
 
     if args.open
+        && env::var_os("MIYABURU_NO_OPEN").as_deref() != Some(std::ffi::OsStr::new("1"))
         && let Err(error) = open_in_browser(&page.page)
     {
         eprintln!(
