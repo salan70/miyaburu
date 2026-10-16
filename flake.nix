@@ -50,6 +50,8 @@
             nodejs_22
             pnpm
             just
+            actionlint
+            shellcheck
           ];
         };
       });

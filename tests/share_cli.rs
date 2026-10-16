@@ -35,6 +35,11 @@ impl Workspace {
         fs::write(self.0.join(path), text).unwrap();
     }
     fn command(&self, args: &[&str]) -> Command {
+        // 実際のcloudflaredを見つけないよう、sleepだけを親のPATHから解決します。
+        let sleep = std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+            .map(|path| path.join("sleep"))
+            .find(|path| path.is_file())
+            .expect("テスト用のsleepが見つかりません");
         let mut command = Command::new(env!("CARGO_BIN_EXE_miyaburu"));
         command
             .args(args)
@@ -43,6 +48,7 @@ impl Workspace {
             .env("XDG_CONFIG_HOME", self.0.join("config"))
             .env("XDG_CACHE_HOME", self.0.join("cache"))
             .env("PATH", self.0.join("bin"))
+            .env("MIYABURU_TEST_SLEEP", sleep)
             .env("FAKE_LOG", self.0.join("origins"))
             .env("FAKE_PIDS", self.0.join("pids"));
         command
@@ -70,7 +76,7 @@ impl Drop for Workspace {
         let _ = fs::remove_dir_all(&self.0);
     }
 }
-const FAKE: &str = "#!/bin/sh\nwhile [ $# -gt 0 ]; do\n if [ \"$1\" = --url ]; then shift; echo \"$1\" >> \"$FAKE_LOG\"; fi\n shift\ndone\necho https://fake.trycloudflare.com >&2\nexec /bin/sleep 120\n";
+const FAKE: &str = "#!/bin/sh\nwhile [ $# -gt 0 ]; do\n if [ \"$1\" = --url ]; then shift; echo \"$1\" >> \"$FAKE_LOG\"; fi\n shift\ndone\necho https://fake.trycloudflare.com >&2\nexec \"$MIYABURU_TEST_SLEEP\" 120\n";
 fn success(output: &Output) {
     assert!(
         output.status.success(),
@@ -118,7 +124,7 @@ fn response_body(response: &[u8]) -> &[u8] {
 #[test]
 fn default_sharing_updates_and_enforces_http_allowlist() {
     let workspace = Workspace::new(FAKE);
-    let first = workspace.run(&["--no-open", "note.md"]);
+    let first = workspace.run(&["note.md"]);
     success(&first);
     assert_eq!(String::from_utf8_lossy(&first.stdout).lines().count(), 1);
     assert!(String::from_utf8_lossy(&first.stderr).contains("https://fake.trycloudflare.com"));
@@ -352,7 +358,10 @@ fn interrupted_start_leaves_no_tunnel_or_origin_and_flushes_path_first() {
 
 #[test]
 fn failures_fall_back_and_no_share_does_not_launch() {
-    for script in ["#!/bin/sh\nexit 1\n", "#!/bin/sh\nexec /bin/sleep 120\n"] {
+    for script in [
+        "#!/bin/sh\nexit 1\n",
+        "#!/bin/sh\nexec \"$MIYABURU_TEST_SLEEP\" 120\n",
+    ] {
         let workspace = Workspace::new(script);
         let started = Instant::now();
         let output = workspace.run(&["--no-open", "note.md"]);

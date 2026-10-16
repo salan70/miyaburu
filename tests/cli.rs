@@ -44,6 +44,7 @@ fn miyaburu(workspace: &Workspace, args: &[&str]) -> Output {
         .env("HOME", &workspace.0)
         .env("XDG_CONFIG_HOME", workspace.0.join("config"))
         .env("XDG_CACHE_HOME", workspace.0.join("cache"))
+        .env_remove("MIYABURU_NO_OPEN")
         .output()
         .expect("run miyaburu")
 }
@@ -319,10 +320,95 @@ fn prints_help_and_version() {
     let help = miyaburu(&workspace, &["--help"]);
     assert!(help.status.success());
     assert!(stdout(&help).contains("--no-open"));
+    assert!(stdout(&help).contains("--open"));
 
     let version = miyaburu(&workspace, &["--version"]);
     assert_eq!(
         stdout(&version).trim(),
         format!("miyaburu {}", env!("CARGO_PKG_VERSION"))
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn environment_variable_does_not_suppress_explicit_open() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let workspace = Workspace::new("no-open-env");
+    workspace.write("note.md", "本文\n");
+    let bin = workspace.0.join("bin");
+    fs::create_dir(&bin).expect("create bin");
+    let marker = workspace.0.join("opened");
+    #[cfg(target_os = "macos")]
+    let opener = bin.join("open");
+    #[cfg(not(target_os = "macos"))]
+    let opener = bin.join("xdg-open");
+    fs::write(&opener, format!("#!/bin/sh\n: > '{}'\n", marker.display())).expect("write opener");
+    fs::set_permissions(&opener, fs::Permissions::from_mode(0o755)).expect("chmod opener");
+
+    let run = |value: Option<&str>, args: &[&str]| {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_miyaburu"));
+        command
+            .args(args)
+            .current_dir(&workspace.0)
+            .env("HOME", &workspace.0)
+            .env("XDG_CONFIG_HOME", workspace.0.join("config"))
+            .env("XDG_CACHE_HOME", workspace.0.join("cache"))
+            .env("PATH", &bin)
+            .env_remove("MIYABURU_NO_OPEN");
+        if let Some(value) = value {
+            command.env("MIYABURU_NO_OPEN", value);
+        }
+        command.output().expect("run miyaburu")
+    };
+
+    let cases: &[(Option<&str>, &[&str], bool)] = &[
+        (None, &["--no-share", "note.md"], false),
+        (None, &["--open", "--no-share", "note.md"], true),
+        (None, &["--no-open", "--no-share", "note.md"], false),
+        (
+            None,
+            &["--open", "--no-open", "--no-share", "note.md"],
+            false,
+        ),
+        (
+            None,
+            &["--no-open", "--open", "--no-share", "note.md"],
+            true,
+        ),
+        (Some("1"), &["--open", "--no-share", "note.md"], true),
+    ];
+    for (index, (variable, args, should_open)) in cases.iter().enumerate() {
+        let _ = fs::remove_file(&marker);
+        let output = run(*variable, args);
+        assert!(output.status.success(), "stderr: {}", stderr(&output));
+        if *should_open {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+            while !marker.exists() && std::time::Instant::now() < deadline {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+        }
+        assert_eq!(marker.exists(), *should_open, "case {index}: {args:?}");
+    }
+
+    let stopped_all = run(Some("1"), &["--stop-all"]);
+    assert!(
+        stopped_all.status.success(),
+        "stderr: {}",
+        stderr(&stopped_all)
+    );
+    let stopped_one = run(Some("1"), &["--stop", "note.md"]);
+    assert!(
+        stopped_one.status.success(),
+        "stderr: {}",
+        stderr(&stopped_one)
+    );
+    for stop in [&["--stop-all"][..], &["--stop", "note.md"][..]] {
+        for open in ["--open", "--no-open"] {
+            let mut args = stop.to_vec();
+            args.push(open);
+            let rejected = run(None, &args);
+            assert_eq!(rejected.status.code(), Some(2), "{args:?}");
+        }
+    }
 }

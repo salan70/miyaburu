@@ -999,8 +999,13 @@ mod tests {
             serde_json::to_vec(&initial).unwrap(),
         )
         .unwrap();
+        // PATHを隔離する前に、Nix環境でも利用できるsleepを特定します。
+        let sleep = std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+            .map(|path| path.join("sleep"))
+            .find(|path| path.is_file())
+            .expect("テスト用のsleepが見つかりません");
         let fake = dir.join("cloudflared");
-        fs::write(&fake, b"#!/bin/sh\nprintf '%s' \"$4\" > \"$MIYABURU_PROCESS_TEST_DIR/origin\"\nprintf '%s' \"$$\" > \"$MIYABURU_PROCESS_TEST_DIR/tunnel-pid\"\nprintf '%s\\n' 'https://process-test.trycloudflare.com' >&2\nexec /bin/sleep 120\n").unwrap();
+        fs::write(&fake, b"#!/bin/sh\nprintf '%s' \"$4\" > \"$MIYABURU_PROCESS_TEST_DIR/origin\"\nprintf '%s' \"$$\" > \"$MIYABURU_PROCESS_TEST_DIR/tunnel-pid\"\nprintf '%s\\n' 'https://process-test.trycloudflare.com' >&2\nexec \"$MIYABURU_TEST_SLEEP\" 120\n").unwrap();
         fs::set_permissions(&fake, fs::Permissions::from_mode(0o700)).unwrap();
         let log = File::create(dir.join("test.log")).unwrap();
         fixture.child = Some(
@@ -1012,6 +1017,7 @@ mod tests {
                     "--nocapture",
                 ])
                 .env("MIYABURU_PROCESS_TEST_DIR", &dir)
+                .env("MIYABURU_TEST_SLEEP", sleep)
                 .env("PATH", &dir)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::from(log.try_clone().unwrap()))

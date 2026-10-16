@@ -7,7 +7,8 @@ Markdownファイルを指定するだけで使えます。
 miyaburu docs/plan.md
 ```
 
-ローカルHTMLを生成し、パスを標準出力へ送信して既定のブラウザーで開いた後、Cloudflare Quick Tunnelによるスマホ向け共有を試みて終了します。
+ローカルHTMLを生成し、パスを標準出力へ送信した後、Cloudflare Quick Tunnelによるスマホ向け共有を試みて終了します。\
+`--open` を指定した場合はローカルHTMLをブラウザーで開きます。
 共有URLの取得を待つ前にパスをflushするため、呼び出し元はすぐ受け取れます。ブラウザー起動に失敗した場合は終了コード1となり、新しい共有を起動しません。
 共有URLと余白付きQRコードは標準エラー、ローカルHTMLのパスは標準出力に1行で表示します。
 共有には `cloudflared` を別途インストールし、PATHに置いてください。未導入や15秒以内にURLを取得できない場合は、共有を片付けてローカル表示に戻ります。共有の失敗だけでは終了コード1になりません。
@@ -37,6 +38,12 @@ LINE Seed JPとHackGenがインストールされていない端末では、OS�
 
 ## 導入
 
+次のコマンドで導入できます。詳しくは[配布と導入](docs/specs/distribution.md)を参照してください。
+
+```sh
+curl -fsSL https://github.com/salan70/miyaburu/releases/latest/download/install.sh | sh
+```
+
 Nix（flakes有効）があれば、次のコマンドで `miyaburu` を使えるようになります。
 
 ```sh
@@ -63,6 +70,7 @@ miyaburu [オプション] <Markdownファイル>
 | `-c`、`--config <ファイル>` | 設定ファイルを指定する |
 | `-o`、`--output <ディレクトリ>` | HTMLの出力先を指定する |
 | `--no-open` | ブラウザーだけを抑止する（共有は止めない） |
+| `--open` | ローカルHTMLをブラウザーで開く |
 | `--no-share` | 共有せずローカルHTMLだけを生成する |
 | `--stop <Markdownファイル>` | 指定文書の共有を停止する |
 | `--stop-all` | すべての共有を停止する |
@@ -84,16 +92,17 @@ cargo run -- examples/sample.md
 
 ## エージェントから使う
 
-Codex、Claude Codeなどのエージェントに開かせるには、`AGENTS.md` や `CLAUDE.md` に次のように書いておきます。
+Codex、Claude Codeなどのエージェントに文書を共有させるには、`AGENTS.md` や `CLAUDE.md` に次のように書いておきます。
 
 ```markdown
-- 計画書や設計書などのMarkdownを書いたら、`miyaburu <ファイル>` で開く。
+- 計画書や設計書などのMarkdownを書いたら、`miyaburu <ファイル>` で共有する。
 - 実行結果から共有URLを取得できたら、ユーザーへの返答にクリックできるMarkdownリンクを載せる。QRコード画像はチャットに貼らない。
 - 共有URLを取得できない場合は、生成されたローカルHTMLのパスを伝える。URLを作り上げない。
 ```
 
 `miyaburu` はブラウザーの終了を待たずに終了するので、エージェントの作業を止めません。
-ブラウザーを開けない環境では `--no-open` を付けると、生成したHTMLのパスだけを標準出力に表示します。
+ブラウザーを開く場合は `--open` を指定します。\
+`--no-open` は互換用に残しており、両方を指定した場合は最後の指定が有効です。
 
 ## 設定
 

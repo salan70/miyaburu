@@ -1,0 +1,92 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'tools/package-release.sh'
+      - 'tools/test-release.sh'
+      - 'tools/check-release-version.sh'
+      - 'install.sh'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'src/**'
+      - 'assets/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-24.04
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust stableを導入
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Linux muslツールを導入
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: タグとCargo.tomlの版を照合
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: sh tools/check-release-version.sh "$GITHUB_REF_NAME"
+      - name: ビルド
+        run: cargo +stable build --release --locked --target "${{ matrix.target }}"
+      - name: smoke検証
+        shell: bash
+        run: |
+          bin="target/${{ matrix.target }}/release/miyaburu"
+          "$bin" --version
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          mkdir -p "$tmp/cache"
+          printf '# 配布確認\n' > "$tmp/sample.md"
+          XDG_CACHE_HOME="$tmp/cache" "$bin" --no-share "$tmp/sample.md"
+      - name: 配布物を作成
+        shell: bash
+        run: |
+          mkdir -p dist
+          sh tools/package-release.sh "${{ matrix.target }}" "target/${{ matrix.target }}/release/miyaburu" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: release-*
+          merge-multiple: true
+      - name: install.shを追加
+        run: cp install.sh release-assets/install.sh
+      - name: Draftを作成して全配布物を添付
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --draft release-assets/*
+      - name: 正式公開
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false
