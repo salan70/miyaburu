@@ -38,6 +38,12 @@ LINE Seed JPとHackGenがインストールされていない端末では、OS�
 
 ## 導入
 
+次のコマンドで導入できます。詳しくは[配布と導入](docs/specs/distribution.md)を参照してください。
+
+```sh
+curl -fsSL https://github.com/salan70/miyaburu/releases/latest/download/install.sh | sh
+```
+
 Nix（flakes有効）があれば、次のコマンドで `miyaburu` を使えるようになります。
 
 ```sh

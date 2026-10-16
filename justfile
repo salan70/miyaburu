@@ -37,8 +37,18 @@ docs-check:
 docs-audit:
     ./tools/docbridge.sh check --audit
 
+# インストーラーの導入動作を検査する。
+install-check:
+    sh tools/test-install.sh
+
+# リリース配布物を検査する。
+release-check:
+    sh tools/test-release.sh
+    actionlint .github/workflows/ci.yml .github/workflows/release.yml
+    shellcheck install.sh tools/check-release-version.sh tools/package-release.sh tools/test-install.sh tools/test-release.sh
+
 # 全体の基本チェック。
-check: fmt-check test docs-check
+check: fmt-check test docs-check install-check release-check
 
 # ツールチェーンのバージョンを確認する。
 versions:
